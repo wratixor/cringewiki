@@ -138,12 +138,15 @@ def initialize(path: Path) -> None:
 
 def ensure_users_concept(connection: sqlite3.Connection) -> int:
     """Create the system tag and link every user point to it."""
+    coordinates = (4, 6, 4, 6, 4, 6)
     row = connection.execute("SELECT id FROM points WHERE slug = 'users'").fetchone()
     if row:
         point_id = row[0]
+        connection.execute("UPDATE points SET c0=?,c1=?,c2=?,c3=?,c4=?,c5=? WHERE id=?", (*coordinates, point_id))
     else:
         point_id = connection.execute(
-            "INSERT INTO points(slug,kind,title,c0,c1,c2,c3,c4,c5) VALUES ('users','article','Пользователи',1,1,1,1,1,1)"
+            "INSERT INTO points(slug,kind,title,c0,c1,c2,c3,c4,c5) VALUES ('users','article','Пользователи',?,?,?,?,?,?)",
+            coordinates,
         ).lastrowid
     connection.execute(
         """INSERT OR IGNORE INTO point_links(source_point_id,target_point_id,kind)
@@ -155,11 +158,14 @@ def ensure_users_concept(connection: sqlite3.Connection) -> int:
 
 def ensure_tags_concept(connection: sqlite3.Connection) -> int:
     """Create the common parent for tag concepts."""
+    coordinates = (6, 4, 6, 4, 6, 4)
     row = connection.execute("SELECT id FROM points WHERE slug = 'tags'").fetchone()
     if row:
+        connection.execute("UPDATE points SET c0=?,c1=?,c2=?,c3=?,c4=?,c5=? WHERE id=?", (*coordinates, row[0]))
         return row[0]
     return connection.execute(
-        "INSERT INTO points(slug,kind,title,c0,c1,c2,c3,c4,c5) VALUES ('tags','article','Теги',1,1,1,1,1,1)"
+        "INSERT INTO points(slug,kind,title,c0,c1,c2,c3,c4,c5) VALUES ('tags','article','Теги',?,?,?,?,?,?)",
+        coordinates,
     ).lastrowid
 
 

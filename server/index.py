@@ -72,7 +72,7 @@ def build_index(connection, current_user_id: int | None = None) -> dict[str, Any
         coordinates = [base[index] + votes[row["id"]][index] for index in range(6)]
         if row["id"] == system_point_id:
             coordinates = [
-                1 + sum(values[index] for values in user_coordinates.values()) / 100 + votes[row["id"]][index]
+                base[index] + sum(values[index] for values in user_coordinates.values()) / 100 + votes[row["id"]][index]
                 for index in range(6)
             ]
         author_ids = [target for kind, target in outgoing[row["id"]] if kind == "author"]

@@ -57,7 +57,7 @@ class PersistenceTests(unittest.TestCase):
             user_coordinates = [concept["coordinates"] for concept in concepts.values() if concept["kind"] == "user"]
             self.assertEqual(
                 concepts["users"]["coordinates"],
-                [1 + sum(values[index] for values in user_coordinates) / 100 for index in range(6)],
+                [(4 if index % 2 == 0 else 6) + sum(values[index] for values in user_coordinates) / 100 for index in range(6)],
             )
             self.assertEqual(len(concepts["users"]["linkedIds"]), 6)
             self.assertEqual(len(concepts["benefis-krinzha"]["coordinates"]), 6)
