@@ -54,7 +54,7 @@ def build_index(connection, current_user_id: int | None = None) -> dict[str, Any
             own_votes[row["point_id"]] = row["pole"]
     own_supports = set(supports.get(current_user_id or -1, []))
 
-    system_point_ids = {row["slug"]: row["id"] for row in rows if row["slug"] in {"users", "tags"}}
+    system_point_ids = {row["slug"]: row["id"] for row in rows if row["slug"] in {"home", "users", "tags"}}
     system_point_id = system_point_ids.get("users")
     tag_parent_id = system_point_ids.get("tags")
     tag_point_ids = {
@@ -83,7 +83,7 @@ def build_index(connection, current_user_id: int | None = None) -> dict[str, Any
             "id": row["slug"], "pointId": row["id"],
             "kind": "system" if row["id"] in system_point_ids.values() else "tag" if row["id"] in tag_point_ids else row["kind"],
             "title": row["title"],
-            "coordinates": coordinates, "body": row["body"] or ("Карта публикаций пользователя." if row["kind"] == "user" else ""),
+            "coordinates": coordinates, "body": row["body"] or row["system_body"] or ("Карта публикаций пользователя." if row["kind"] == "user" else ""),
             "linkedIds": [], "incomingCount": incoming[row["id"]], "weight": weights.get(row["id"], 0.0),
             "actionUrl": row["action_url"],
             "selectedPole": own_votes.get(row["id"]), "supported": row["id"] in own_supports,
@@ -94,7 +94,9 @@ def build_index(connection, current_user_id: int | None = None) -> dict[str, Any
         item["linkedIds"] = sorted(slug_by_id[value] for value in linked[item["pointId"]] if value in slug_by_id)
         item["tagIds"] = [slug_by_id[value] for value in item["tagPointIds"] if value in slug_by_id]
         del item["tagPointIds"]
-    home = max(concepts, key=lambda item: (item["weight"], item["incomingCount"], -item["pointId"]))
+    home = next((item for item in concepts if item["id"] == "home"), None)
+    if home is None:
+        home = max(concepts, key=lambda item: (item["weight"], item["incomingCount"], -item["pointId"]))
     return {
         "formatVersion": "0.1", "engineVersion": "0.1.0-dev", "projection": "paired-balance-preview-v0",
         "axes": AXES, "homeId": home["id"], "concepts": concepts,

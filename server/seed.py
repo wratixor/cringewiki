@@ -3,26 +3,23 @@
 from __future__ import annotations
 
 from .app import DB_PATH
-from .db import connect, ensure_users_concept, initialize
+from .db import RICKROLL_BODY, RICKROLL_URL, connect, ensure_users_concept, initialize
 from .security import hash_password
 
 USERS = [("reactor", [5, 6, 7, 4, 7, 3]), ("kotoman", [2, 8, 9, 2, 6, 5]), ("archivarius", [3, 7, 4, 8, 10, 2]), ("newfag", [7, 4, 7, 4, 2, 9]), ("seriouscat", [3, 9, 2, 10, 6, 5])]
-RICKROLL_URL = "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
-RICKROLL_BODY = "![Кадр из клипа](https://i.ytimg.com/vi/dQw4w9WgXcQ/hqdefault.jpg)\n\nТочка, которая обещает навигацию, а открывает классический клип. Связана с [[benefis-krinzha|Бенефисом кринжа]]."
 ARTICLES = [
     ("benefis-krinzha", "Бенефис кринжа", "Сцена для торжественного признания: **да, это кринж**.\n\nСм. [[detektor-bazy|Детектор базы]] и [[vetka-kommentariev|Ветку комментариев]].", [9, 2, 8, 4, 4, 7], 1),
     ("detektor-bazy", "Детектор базы", "Прибор общественной калибровки. Иногда показывает базу, иногда оператора.\n\nСвязан с [[benefis-krinzha|Бенефисом кринжа]].", [3, 9, 5, 6, 5, 7], 2),
     ("kote-s-reaktora", "Котэ с Реактора", "Котэ не требует обоснований. Это демонстрационная статья, а не архив сообщества.", [2, 9, 10, 2, 7, 4], 2),
     ("vetka-kommentariev", "Ветка комментариев", "Пространство, где исходная тема постепенно становится необязательной.\n\nИногда приводит к [[knopka-bayan|Кнопке «Баян»]].", [6, 5, 8, 4, 7, 6], 4),
     ("knopka-bayan", "Кнопка «Баян»", "Точка памяти: повтор может быть ошибкой, традицией или необходимым контекстом.", [4, 7, 6, 6, 10, 2], 3),
-    ("rickroll", "Рикролл", RICKROLL_BODY, [8, 2, 9, 2, 10, 2], 1, RICKROLL_URL),
 ]
 
 
 def ensure_rickroll(connection) -> bool:
     existing = connection.execute("SELECT id FROM points WHERE slug = 'rickroll'").fetchone()
     if existing:
-        connection.execute("UPDATE points SET action_url = ? WHERE id = ?", (RICKROLL_URL, existing[0]))
+        connection.execute("UPDATE points SET action_url = ?, system_body = ? WHERE id = ?", (RICKROLL_URL, RICKROLL_BODY, existing[0]))
         connection.execute("UPDATE articles SET body = ? WHERE point_id = ?", (RICKROLL_BODY, existing[0]))
         return False
     author = connection.execute(
@@ -60,7 +57,7 @@ def seed(path=DB_PATH) -> bool:
         users_point = ensure_users_concept(connection)
         for point_id in point_ids:
             connection.execute("INSERT OR IGNORE INTO point_links VALUES (?, ?, 'content')", (point_id, users_point))
-        article_points = {}
+        article_points = {"rickroll": connection.execute("SELECT id FROM points WHERE slug = 'rickroll'").fetchone()[0]}
         for article in ARTICLES:
             slug, title, body, coordinates, author_number, *action = article
             action_url = action[0] if action else None

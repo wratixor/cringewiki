@@ -19,6 +19,7 @@ CREATE TABLE IF NOT EXISTS points (
   kind TEXT NOT NULL CHECK (kind IN ('user', 'article')),
   title TEXT NOT NULL CHECK (length(title) BETWEEN 1 AND 128),
   action_url TEXT,
+  system_body TEXT NOT NULL DEFAULT '' CHECK (length(system_body) <= 100000),
   c0 INTEGER NOT NULL CHECK (c0 BETWEEN 1 AND 10),
   c1 INTEGER NOT NULL CHECK (c1 BETWEEN 1 AND 10),
   c2 INTEGER NOT NULL CHECK (c2 BETWEEN 1 AND 10),
@@ -110,6 +111,8 @@ def initialize(path: Path) -> None:
         point_columns = {row[1] for row in connection.execute("PRAGMA table_info(points)")}
         if "action_url" not in point_columns:
             connection.execute("ALTER TABLE points ADD COLUMN action_url TEXT")
+        if "system_body" not in point_columns:
+            connection.execute("ALTER TABLE points ADD COLUMN system_body TEXT NOT NULL DEFAULT ''")
         article_columns = {row[1] for row in connection.execute("PRAGMA table_info(articles)")}
         if "parent_point_id" not in article_columns:
             connection.execute("ALTER TABLE articles ADD COLUMN parent_point_id INTEGER REFERENCES points(id)")
@@ -124,6 +127,9 @@ def initialize(path: Path) -> None:
         connection.executescript(COORDINATE_GUARDS)
         ensure_users_concept(connection)
         ensure_tags_concept(connection)
+        ensure_home_concept(connection)
+        ensure_rickroll_concept(connection)
+        ensure_home_links(connection)
 
 
 def ensure_users_concept(connection: sqlite3.Connection) -> int:
@@ -151,3 +157,34 @@ def ensure_tags_concept(connection: sqlite3.Connection) -> int:
     return connection.execute(
         "INSERT INTO points(slug,kind,title,c0,c1,c2,c3,c4,c5) VALUES ('tags','article','Теги',1,1,1,1,1,1)"
     ).lastrowid
+
+
+HOME_BODY = "# Кринжевики\n\nОткрытая карта реакторского знания. Начните с [[users|Пользователей]], [[tags|Тегов]] или [[rickroll|Рикролла]]."
+RICKROLL_URL = "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
+RICKROLL_BODY = "![Кадр из клипа](https://i.ytimg.com/vi/dQw4w9WgXcQ/hqdefault.jpg)\n\nТочка, которая обещает навигацию, а открывает классический клип."
+
+
+def _ensure_system_point(connection: sqlite3.Connection, slug: str, title: str, coordinates: tuple[int, ...], body: str = "", action_url: str | None = None) -> int:
+    row = connection.execute("SELECT id FROM points WHERE slug = ?", (slug,)).fetchone()
+    if row:
+        connection.execute("UPDATE points SET title = ?, system_body = ?, action_url = ? WHERE id = ?", (title, body, action_url, row[0]))
+        return row[0]
+    return connection.execute(
+        "INSERT INTO points(slug,kind,title,action_url,system_body,c0,c1,c2,c3,c4,c5) VALUES (?,?,?,?,?,?,?,?,?,?,?)",
+        (slug, "article", title, action_url, body, *coordinates),
+    ).lastrowid
+
+
+def ensure_home_concept(connection: sqlite3.Connection) -> int:
+    return _ensure_system_point(connection, "home", "Главная", (5, 5, 5, 5, 5, 5), HOME_BODY)
+
+
+def ensure_rickroll_concept(connection: sqlite3.Connection) -> int:
+    return _ensure_system_point(connection, "rickroll", "Рикролл", (8, 2, 9, 2, 10, 2), RICKROLL_BODY, RICKROLL_URL)
+
+
+def ensure_home_links(connection: sqlite3.Connection) -> None:
+    home = connection.execute("SELECT id FROM points WHERE slug = 'home'").fetchone()[0]
+    for slug in ("users", "tags", "rickroll"):
+        target = connection.execute("SELECT id FROM points WHERE slug = ?", (slug,)).fetchone()[0]
+        connection.execute("INSERT OR IGNORE INTO point_links VALUES (?, ?, 'content')", (home, target))

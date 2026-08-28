@@ -40,7 +40,7 @@ class PersistenceTests(unittest.TestCase):
             self.assertTrue(seed(path)); self.assertFalse(seed(path))
             with connect(path) as connection:
                 payload = build_index(connection)
-            self.assertEqual(len(payload["concepts"]), 13)
+            self.assertEqual(len(payload["concepts"]), 14)
             self.assertEqual(payload["mass"]["users"], 5)
             self.assertAlmostEqual(payload["mass"]["total"], 5.0, places=9)
             concepts = {item["id"]: item for item in payload["concepts"]}
@@ -49,12 +49,16 @@ class PersistenceTests(unittest.TestCase):
             self.assertEqual(concepts["rickroll"]["actionUrl"], "https://www.youtube.com/watch?v=dQw4w9WgXcQ")
             self.assertEqual(concepts["users"]["kind"], "system")
             self.assertEqual(concepts["tags"]["kind"], "system")
+            self.assertEqual(concepts["home"]["kind"], "system")
+            self.assertEqual(payload["homeId"], "home")
+            self.assertEqual(concepts["rickroll"]["actionUrl"], "https://www.youtube.com/watch?v=dQw4w9WgXcQ")
+            self.assertIn("rickroll", concepts["home"]["linkedIds"])
             user_coordinates = [concept["coordinates"] for concept in concepts.values() if concept["kind"] == "user"]
             self.assertEqual(
                 concepts["users"]["coordinates"],
                 [1 + sum(values[index] for values in user_coordinates) / 100 for index in range(6)],
             )
-            self.assertEqual(len(concepts["users"]["linkedIds"]), 5)
+            self.assertEqual(len(concepts["users"]["linkedIds"]), 6)
             self.assertEqual(len(concepts["benefis-krinzha"]["coordinates"]), 6)
             self.assertTrue(all(1 <= value <= 10 for item in payload["concepts"] for value in item["coordinates"]))
 
