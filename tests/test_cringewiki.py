@@ -40,13 +40,15 @@ class PersistenceTests(unittest.TestCase):
             self.assertTrue(seed(path)); self.assertFalse(seed(path))
             with connect(path) as connection:
                 payload = build_index(connection)
-            self.assertEqual(len(payload["concepts"]), 12)
+            self.assertEqual(len(payload["concepts"]), 13)
             self.assertEqual(payload["mass"]["users"], 5)
             self.assertAlmostEqual(payload["mass"]["total"], 5.0, places=9)
             concepts = {item["id"]: item for item in payload["concepts"]}
+            self.assertTrue(all(item["title"] for item in concepts.values()))
             self.assertIn("detektor-bazy", concepts["benefis-krinzha"]["linkedIds"])
             self.assertEqual(concepts["rickroll"]["actionUrl"], "https://www.youtube.com/watch?v=dQw4w9WgXcQ")
             self.assertEqual(concepts["users"]["kind"], "system")
+            self.assertEqual(concepts["tags"]["kind"], "system")
             user_coordinates = [concept["coordinates"] for concept in concepts.values() if concept["kind"] == "user"]
             self.assertEqual(
                 concepts["users"]["coordinates"],
@@ -95,11 +97,15 @@ class PersistenceTests(unittest.TestCase):
                 connection.execute("INSERT INTO profiles(user_id,point_id) VALUES (?,?)", (user_id, author_point))
                 users_point = connection.execute("SELECT id FROM points WHERE slug = 'users'").fetchone()[0]
                 result = object.__new__(Handler)._create_article(connection, user_id, {
-                    "title": "Без текста", "body": "", "coordinates": [1, 1, 1, 1, 1, 1], "parentId": "users", "tags": [],
+                    "title": "Без текста", "body": "", "coordinates": [1, 1, 1, 1, 1, 1], "parentId": "users", "tags": [], "newTags": ["Новый тег"],
                 })
                 article_id = connection.execute("SELECT id FROM points WHERE slug = ?", (result["id"],)).fetchone()[0]
                 links = {tuple(row) for row in connection.execute("SELECT target_point_id,kind FROM point_links WHERE source_point_id = ?", (article_id,))}
-            self.assertEqual(links, {(author_point, "author"), (users_point, "content")})
+                tag_point = connection.execute("SELECT id FROM points WHERE title = 'Новый тег'").fetchone()[0]
+                tags_parent = connection.execute("SELECT id FROM points WHERE slug = 'tags'").fetchone()[0]
+                tag_links = {tuple(row) for row in connection.execute("SELECT target_point_id,kind FROM point_links WHERE source_point_id = ?", (tag_point,))}
+            self.assertEqual(links, {(author_point, "author"), (users_point, "content"), (tag_point, "content")})
+            self.assertIn((tags_parent, "content"), tag_links)
 
 
 if __name__ == "__main__":

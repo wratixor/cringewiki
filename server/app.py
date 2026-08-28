@@ -13,7 +13,7 @@ from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import unquote, urlparse
 
-from .db import connect, ensure_users_concept, initialize
+from .db import connect, ensure_tags_concept, ensure_users_concept, initialize
 from .index import build_index
 from .security import hash_password, new_token, token_digest, verify_password
 
@@ -207,8 +207,12 @@ class Handler(SimpleHTTPRequestHandler):
             (slug, "article", title, *coordinates),
         ).lastrowid
         parent_slug = str(data.get("parentId", "")).strip()
-        tag_slugs = data.get("tags", [])
-        if not isinstance(tag_slugs, list) or len(tag_slugs) > 20 or any(not isinstance(value, str) for value in tag_slugs):
+        tag_slugs, new_tags = data.get("tags", []), data.get("newTags", [])
+        if (
+            not isinstance(tag_slugs, list) or not isinstance(new_tags, list)
+            or len(tag_slugs) + len(new_tags) > 20
+            or any(not isinstance(value, str) for value in tag_slugs + new_tags)
+        ):
             raise ApiError(400, "Можно указать до 20 существующих тегов")
         author_point = connection.execute("SELECT point_id FROM profiles WHERE user_id = ?", (user_id,)).fetchone()[0]
         parent = connection.execute("SELECT id FROM points WHERE slug = ?", (parent_slug,)).fetchone() if parent_slug else None
@@ -219,7 +223,32 @@ class Handler(SimpleHTTPRequestHandler):
         connection.execute("INSERT INTO point_links VALUES (?,?, 'author')", (point_id, author_point))
         if parent and parent[0] != point_id and parent[0] != author_point:
             connection.execute("INSERT OR IGNORE INTO point_links VALUES (?,?, 'content')", (point_id, parent[0]))
-        for target_slug in set(INTERNAL_LINK.findall(body)) | set(tag_slugs):
+        tag_point = ensure_tags_concept(connection)
+        selected_tag_ids = []
+        for target_slug in set(tag_slugs):
+            target = connection.execute("SELECT id FROM points WHERE slug = ?", (target_slug,)).fetchone()
+            if target and target[0] not in (point_id, author_point):
+                connection.execute("INSERT OR IGNORE INTO point_links VALUES (?,?, 'content')", (point_id, target[0]))
+                selected_tag_ids.append(target[0])
+        for title in {value.strip() for value in new_tags if value.strip()}:
+            if len(title) > 128:
+                raise ApiError(400, "Название тега — до 128 символов")
+            target = next(
+                (row for row in connection.execute("SELECT id, title FROM points") if row["title"].casefold() == title.casefold()),
+                None,
+            )
+            if not target:
+                target = (connection.execute(
+                    "INSERT INTO points(slug,kind,title,c0,c1,c2,c3,c4,c5) VALUES (?,?,?,?,?,?,?,?,?)",
+                    (f"tag-{secrets.token_hex(8)}", "article", title, *coordinates),
+                ).lastrowid,)
+            if target[0] not in (point_id, author_point, tag_point):
+                connection.execute("INSERT OR IGNORE INTO point_links VALUES (?,?, 'content')", (point_id, target[0]))
+                selected_tag_ids.append(target[0])
+        for target_id in set(selected_tag_ids):
+            if target_id != tag_point:
+                connection.execute("INSERT OR IGNORE INTO point_links VALUES (?,?, 'content')", (target_id, tag_point))
+        for target_slug in set(INTERNAL_LINK.findall(body)):
             target = connection.execute("SELECT id FROM points WHERE slug = ?", (target_slug,)).fetchone()
             if target and target[0] not in (point_id, author_point):
                 connection.execute("INSERT OR IGNORE INTO point_links VALUES (?,?, 'content')", (point_id, target[0]))

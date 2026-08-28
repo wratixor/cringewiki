@@ -123,6 +123,7 @@ def initialize(path: Path) -> None:
             connection.execute("PRAGMA user_version = 1")
         connection.executescript(COORDINATE_GUARDS)
         ensure_users_concept(connection)
+        ensure_tags_concept(connection)
 
 
 def ensure_users_concept(connection: sqlite3.Connection) -> int:
@@ -140,3 +141,13 @@ def ensure_users_concept(connection: sqlite3.Connection) -> int:
         (point_id, point_id),
     )
     return point_id
+
+
+def ensure_tags_concept(connection: sqlite3.Connection) -> int:
+    """Create the common parent for tag concepts."""
+    row = connection.execute("SELECT id FROM points WHERE slug = 'tags'").fetchone()
+    if row:
+        return row[0]
+    return connection.execute(
+        "INSERT INTO points(slug,kind,title,c0,c1,c2,c3,c4,c5) VALUES ('tags','article','Теги',1,1,1,1,1,1)"
+    ).lastrowid

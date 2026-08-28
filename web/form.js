@@ -3,6 +3,7 @@
 let session;
 let index;
 const selectedTags = new Set();
+const newTags = new Set();
 const form = document.querySelector("form");
 const message = document.querySelector("#message");
 
@@ -51,6 +52,16 @@ function setupTags() {
       }
       list.append(chip);
     }
+    for (const title of newTags) {
+      const chip = document.createElement("span");
+      chip.className = "tag-chip new";
+      chip.textContent = title;
+      const remove = document.createElement("button");
+      remove.type = "button"; remove.textContent = "×"; remove.setAttribute("aria-label", `Убрать тег ${title}`);
+      remove.addEventListener("click", () => { newTags.delete(title); render(); });
+      chip.append(remove);
+      list.append(chip);
+    }
   };
   const renderSuggestions = () => {
     const query = search.value.trim().toLocaleLowerCase("ru");
@@ -62,6 +73,16 @@ function setupTags() {
       button.type = "button"; button.textContent = concept.title;
       button.addEventListener("click", () => { selectedTags.add(concept.id); search.value = ""; suggestions.replaceChildren(); render(); });
       suggestions.append(button);
+    }
+    const hasExactTitle = index.concepts.some((item) => item.title.toLocaleLowerCase("ru") === query)
+      || [...newTags].some((title) => title.toLocaleLowerCase("ru") === query);
+    if (!hasExactTitle && selectedTags.size + newTags.size < 20) {
+      const create = document.createElement("button");
+      create.type = "button"; create.className = "new-tag-button"; create.textContent = `Создать тег «${search.value.trim()}»`;
+      create.addEventListener("click", () => {
+        newTags.add(search.value.trim()); search.value = ""; suggestions.replaceChildren(); render();
+      });
+      suggestions.append(create);
     }
   };
   search.addEventListener("input", renderSuggestions);
@@ -86,6 +107,7 @@ form.addEventListener("submit", async (event) => {
     if (form.dataset.kind === "article") {
       payload.parentId = form.dataset.parentId || "";
       payload.tags = [...selectedTags];
+      payload.newTags = [...newTags];
     }
     const result = await api(endpoint, { method: "POST", body: JSON.stringify(payload) });
     location.href = form.dataset.kind === "article" ? `./#${result.id}` : "./";

@@ -18,6 +18,8 @@
 .tag-chip, .tag-suggestions button { border: 1px solid #465574; border-radius: 999px; padding: .28rem .6rem; color: #c8d9fa; background: #101622; font-size: .86rem; }
 .tag-chip button { margin-left: .35rem; border: 0; padding: 0; color: #f3b0b0; background: transparent; }
 .tag-chip.fixed { border-color: #6d82aa; color: #d3def4; }
+.tag-chip.new { border-color: #67b68b; color: #c8f0d6; }
+.new-tag-button { border-color: #67b68b !important; color: #c8f0d6 !important; }
 .tag-suggestions:empty { display: none; }
 #message { min-height: 1.5rem; color: #f0c955; }
 @media (max-width: 600px) { .coordinate-grid { grid-template-columns: 1fr; } }

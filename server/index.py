@@ -54,7 +54,14 @@ def build_index(connection, current_user_id: int | None = None) -> dict[str, Any
             own_votes[row["point_id"]] = row["pole"]
     own_supports = set(supports.get(current_user_id or -1, []))
 
-    system_point_id = next((row["id"] for row in rows if row["slug"] == "users"), None)
+    system_point_ids = {row["slug"]: row["id"] for row in rows if row["slug"] in {"users", "tags"}}
+    system_point_id = system_point_ids.get("users")
+    tag_parent_id = system_point_ids.get("tags")
+    tag_point_ids = {
+        row["source_point_id"] for row in connection.execute(
+            "SELECT source_point_id FROM point_links WHERE target_point_id = ? AND kind = 'content'", (tag_parent_id,)
+        )
+    } if tag_parent_id else set()
     user_coordinates = {
         row["id"]: [row[f"c{index}"] + votes[row["id"]][index] for index in range(6)]
         for row in rows if row["kind"] == "user"
@@ -73,7 +80,9 @@ def build_index(connection, current_user_id: int | None = None) -> dict[str, Any
         parent_id = row["parent_point_id"]
         tag_ids = author_ids + ([parent_id] if parent_id else []) + [target for target in content_ids if target != parent_id]
         concepts.append({
-            "id": row["slug"], "pointId": row["id"], "kind": "system" if row["id"] == system_point_id else row["kind"], "title": row["title"],
+            "id": row["slug"], "pointId": row["id"],
+            "kind": "system" if row["id"] in system_point_ids.values() else "tag" if row["id"] in tag_point_ids else row["kind"],
+            "title": row["title"],
             "coordinates": coordinates, "body": row["body"] or ("Карта публикаций пользователя." if row["kind"] == "user" else ""),
             "linkedIds": [], "incomingCount": incoming[row["id"]], "weight": weights.get(row["id"], 0.0),
             "actionUrl": row["action_url"],
