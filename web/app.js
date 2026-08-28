@@ -258,7 +258,7 @@ function renderLabels(nodes, axisLabels, width, height) {
     const rating = document.createElement("small");
     rating.textContent = `↗ ${node.concept.incomingCount}`;
     button.append(rating);
-    button.addEventListener("click", () => navigate(node.concept.id));
+    button.addEventListener("click", () => navigate(node.concept.id, { openAction: true }));
     button.style.visibility = "hidden";
     labels.append(button);
     const labelWidth = button.offsetWidth;
@@ -296,6 +296,9 @@ function escapeHtml(value) {
 
 function inlineMarkdown(value) {
   return value
+    .replace(/!\[([^\]]*)\]\((https?:\/\/[^)\s]+)\)/gi, (_, label, href) => (
+      `<img src="${href}" alt="${label}" loading="lazy" referrerpolicy="no-referrer">`
+    ))
     .replace(/\[\[([a-z0-9][a-z0-9-]{0,63})(?:\|([^\]]+))?\]\]/gi, (_, id, label) => {
       const target = conceptById(id);
       return target ? `<a href="#${target.id}" data-concept-id="${target.id}">${label || target.title}</a>` : (label || id);
@@ -383,7 +386,7 @@ function renderFocus() {
   articleBody.querySelectorAll("[data-concept-id]").forEach((link) => {
     link.addEventListener("click", (event) => {
       event.preventDefault();
-      navigate(link.dataset.conceptId);
+      navigate(link.dataset.conceptId, { openAction: true });
     });
   });
   backButton.disabled = state.history.length < 2;
@@ -391,8 +394,10 @@ function renderFocus() {
   drawMap();
 }
 
-function navigate(id, { remember = true } = {}) {
-  if (!conceptById(id)) return;
+function navigate(id, { remember = true, openAction = false } = {}) {
+  const destination = conceptById(id);
+  if (!destination) return;
+  if (openAction && destination.actionUrl) window.open(destination.actionUrl, "_blank", "noopener,noreferrer");
   if (remember && state.history.at(-1) !== id) state.history.push(id);
   state.focusId = id;
   location.hash = id;
@@ -455,7 +460,7 @@ function renderSearch() {
     button.addEventListener("click", () => {
       search.value = "";
       searchResults.replaceChildren();
-      navigate(concept.id);
+      navigate(concept.id, { openAction: true });
     });
     searchResults.append(button);
   }
@@ -487,7 +492,7 @@ canvas.addEventListener("click", (event) => {
   const x = event.clientX - rectangle.left;
   const y = event.clientY - rectangle.top;
   const match = [...state.renderedNodes].reverse().find((node) => Math.hypot(x - node.screen.x, y - node.screen.y) <= node.radius + 5);
-  if (match) navigate(match.concept.id);
+  if (match) navigate(match.concept.id, { openAction: true });
 });
 
 backButton.addEventListener("click", () => {

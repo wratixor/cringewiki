@@ -18,6 +18,7 @@ CREATE TABLE IF NOT EXISTS points (
   slug TEXT NOT NULL UNIQUE,
   kind TEXT NOT NULL CHECK (kind IN ('user', 'article')),
   title TEXT NOT NULL CHECK (length(title) BETWEEN 1 AND 128),
+  action_url TEXT,
   c0 INTEGER NOT NULL CHECK (c0 BETWEEN 1 AND 10),
   c1 INTEGER NOT NULL CHECK (c1 BETWEEN 1 AND 10),
   c2 INTEGER NOT NULL CHECK (c2 BETWEEN 1 AND 10),
@@ -105,6 +106,9 @@ def connect(path: Path) -> sqlite3.Connection:
 def initialize(path: Path) -> None:
     with connect(path) as connection:
         connection.executescript(SCHEMA)
+        point_columns = {row[1] for row in connection.execute("PRAGMA table_info(points)")}
+        if "action_url" not in point_columns:
+            connection.execute("ALTER TABLE points ADD COLUMN action_url TEXT")
         version = connection.execute("PRAGMA user_version").fetchone()[0]
         if version < 1:
             columns = ", ".join(

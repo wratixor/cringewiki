@@ -40,11 +40,12 @@ class PersistenceTests(unittest.TestCase):
             self.assertTrue(seed(path)); self.assertFalse(seed(path))
             with connect(path) as connection:
                 payload = build_index(connection)
-            self.assertEqual(len(payload["concepts"]), 10)
+            self.assertEqual(len(payload["concepts"]), 11)
             self.assertEqual(payload["mass"]["users"], 5)
             self.assertAlmostEqual(payload["mass"]["total"], 5.0, places=9)
             concepts = {item["id"]: item for item in payload["concepts"]}
             self.assertIn("detektor-bazy", concepts["benefis-krinzha"]["linkedIds"])
+            self.assertEqual(concepts["rickroll"]["actionUrl"], "https://www.youtube.com/watch?v=dQw4w9WgXcQ")
             self.assertEqual(len(concepts["benefis-krinzha"]["coordinates"]), 6)
             self.assertTrue(all(1 <= value <= 10 for item in payload["concepts"] for value in item["coordinates"]))
 

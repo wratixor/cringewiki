@@ -59,6 +59,7 @@ def build_index(connection, current_user_id: int | None = None) -> dict[str, Any
             "id": row["slug"], "pointId": row["id"], "kind": row["kind"], "title": row["title"],
             "coordinates": coordinates, "body": row["body"] or "Карта публикаций пользователя.",
             "linkedIds": [], "incomingCount": incoming[row["id"]], "weight": weights.get(row["id"], 0.0),
+            "actionUrl": row["action_url"],
             "selectedPole": own_votes.get(row["id"]), "supported": row["id"] in own_supports,
             "map": row["kind"] == "user",
         })

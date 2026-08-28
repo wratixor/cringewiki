@@ -171,6 +171,7 @@ canvas.dragging { cursor: grabbing; }
 .article-card code { padding: .12rem .3rem; border-radius: .3rem; background: #080b11; }
 .article-card pre code { padding: 0; }
 .article-card li + li { margin-top: .35rem; }
+.article-card img { display: block; max-width: 100%; height: auto; margin: 1.25rem auto; border-radius: .9rem; box-shadow: 0 .8rem 2rem rgba(0, 0, 0, .3); }
 
 footer {
   display: flex;
