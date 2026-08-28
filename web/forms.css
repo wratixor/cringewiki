@@ -1,0 +1,11 @@
+@import url("styles.css");
+.form-page { width: min(48rem, calc(100% - 2rem)); margin: 3rem auto; }
+.form-card { display: grid; gap: 1rem; padding: clamp(1.2rem, 4vw, 2.5rem); border: 1px solid #354156; border-radius: 1rem; background: #0d121c; }
+.form-card h1 { margin: 0; }
+.form-card label { display: grid; gap: .35rem; color: #b8c3d4; }
+.form-card input, .form-card textarea { width: 100%; border: 1px solid #354156; border-radius: .6rem; padding: .7rem; color: #fff; background: #090d15; }
+.form-card textarea { min-height: 18rem; resize: vertical; }
+.coordinate-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: .8rem; }
+.form-links { display: flex; justify-content: space-between; }
+#message { min-height: 1.5rem; color: #f0c955; }
+@media (max-width: 600px) { .coordinate-grid { grid-template-columns: 1fr; } }

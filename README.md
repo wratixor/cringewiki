@@ -1,117 +1,69 @@
-# Hexrelatum
+# Кринжевики
 
-**Hexrelatum** is an open, Git-native wiki that lets every article become the
-temporary centre of a three-dimensional map of directly related knowledge.
+Минимальная социальная пространственная вики на основе открытого движка
+[Hexrelatum](https://github.com/wratixor/hexrelatum). Статические HTML/CSS/JS
+страницы работают с небольшим JSON API на стандартной библиотеке Python;
+данные хранятся в SQLite. Сторонних runtime-зависимостей нет.
 
-The source of truth is deliberately small and portable:
+Это ранний локальный прототип, не готовый публичный сервис.
 
-- Markdown articles and their six positive coordinates live in `wiki/`;
-- `tools/build_index.py` validates the articles and builds a SQLite index plus
-  a static JSON representation;
-- the dependency-free reader in `web/` displays the selected article and only
-  its immediate neighbours;
-- code, knowledge, schemas, licenses, and generated public indexes travel in one
-  repository.
+## Запуск
 
-The name combines *hexa* (six source components) with *relatum* (a thing defined
-through relations). The internal **"everything bagel"** reference is an origin
-story, not a dependency on somebody else's visual identity.
-
-## Current status
-
-This is the initial `0.2.0-dev` scaffold. It establishes the public repository,
-content contract, reference indexer, reproducible fixtures, and a minimal local
-reader. The projection and color preview are explicitly versioned as provisional
-and are not a final semantic or color-science decision.
-
-Hexrelatum currently has no accounts, server database, subscriptions, votes,
-hidden lore, or runtime Git authentication.
-
-Public reader: <https://wratixor.github.io/hexrelatum/>
-
-## Local use
-
-Requires Python 3.11 or newer. Node.js is useful only for the optional JavaScript
-syntax check.
+Требуется Python 3.11+:
 
 ```powershell
-python tools/build_index.py
-python -m http.server 8765
+python -m server.seed
+python run.py
 ```
 
-Then open `http://127.0.0.1:8765/web/`.
+Откройте <http://127.0.0.1:8765/web/>. Демо-пользователи имеют общий пароль
+`reactor-demo`; команда заполнения работает только для пустой базы. Не
+используйте эти учётные данные вне локальной демонстрации.
 
-Run all dependency-free checks:
+## Что уже есть
+
+- регистрация: логин, пароль и шесть координат от 1 до 99;
+- вход и серверные сессии с CSRF-защитой;
+- публикация текстовых статей со стартовыми координатами;
+- внутренние ссылки `[[slug|подпись]]`, внешние Markdown-ссылки и простое форматирование;
+- один изменяемый голос пользователя за один из шести полюсов каждой точки;
+- поддержка пользователей и статей;
+- сохраняющее массу влияние с базовым удержанием 25%;
+- фрактальная навигация по непосредственно связанным точкам.
+
+Пары осей прототипа: **Кринж ↔ База**, **Смешное ↔ Серьёзное** и
+**Баян ↔ Новинка**. Голос добавляет единицу выбранной исходной координате;
+смена голоса переносит эту единицу.
+
+Каждый пользователь создаёт ровно одну единицу влияния. В каждой посещённой
+пользовательской точке 25% текущей массы остаётся ей, остальные 75% делятся
+между поддержками. Статья поглощает полученную массу. Поэтому цикл взаимных
+поддержек лишь перераспределяет существующую массу и не создаёт новую.
+
+## Границы прототипа
+
+`http.server` подходит для разработки, но не является самостоятельным
+production-сервером. Перед публикацией нужны TLS/reverse proxy, ограничения
+частоты входа, резервное копирование, журналирование без секретов и отдельный
+разбор угроз. SQLite-файл и реальные пользовательские данные не коммитятся.
+
+Настройки окружения:
+
+- `CRINGEWIKI_DB` — путь к SQLite;
+- `CRINGEWIKI_HOST`, `CRINGEWIKI_PORT` — адрес и порт;
+- `CRINGEWIKI_SECURE_COOKIES=1` — cookie только через HTTPS;
+- `CRINGEWIKI_MAX_ARTICLES_PER_USER` — лимит публикаций, по умолчанию 99.
+
+## Проверка
 
 ```powershell
-python tools/build_index.py --check
 python -m unittest discover -s tests -v
-python -m compileall -q tools tests
+python -m compileall -q server tests
 node --check web/app.js
+node --check web/form.js
+git diff --check
 ```
 
-## Editing the wiki
-
-Every `*.md` file under `wiki/` begins with a deliberately restricted metadata
-header:
-
-```markdown
----
-id: example-concept
-title: Example concept
-coordinates: [2, 5, 1, 4, 3, 3]
-home: false
-map: false
----
-```
-
-Rules:
-
-- `id` is stable and must not change when the title changes;
-- `title` is limited to 128 Unicode characters;
-- `coordinates` contains exactly six finite numbers, each at least `1`;
-- exactly one article has `home: true`;
-- `map: true` asks the reader to keep the map as the primary layer;
-- relative Markdown links create navigable relationships;
-- external links remain ordinary outbound references and are never fetched by
-  the indexer.
-
-The three opposed pairs are named in `wiki.config.json`. The bundled general-
-knowledge preview uses **Order ↔ Chaos**, **Reality ↔ Fiction**, and
-**Concrete ↔ Abstract**. These names and the color preview remain provisional;
-forks may define another versioned axis vocabulary without changing reader code.
-
-The main article has no privileged coordinates. Its only special property is
-that it opens first, so it should link directly to the important entry points.
-
-## Repository layout
-
-```text
-engine contract     schema/
-reference indexer   tools/
-static reader       web/
-all public knowledge wiki/
-wiki axis semantics wiki.config.json
-generated indexes   public/
-validation           tests/ and .github/workflows/
-licensing            LICENSE, LICENSES/, LICENSES.md
-provenance           provenance.json
-```
-
-## Licensing
-
-- engine and indexer code: GNU AGPL-3.0-or-later;
-- public index specification: CC0-1.0;
-- wiki articles and documentation: CC BY-SA 4.0 unless a file says otherwise.
-
-Generated indexes do not change the license of their source content. See
-`LICENSES.md` for the path-by-path boundary.
-
-## Source and provenance
-
-This copy is maintained at
-<https://github.com/wratixor/hexrelatum>. The reader exposes repository,
-upstream, license, and version links from `provenance.json`. Derived public
-deployments should update `repository` to their own public Git repository,
-preserve `upstreamRepository`, and provide the source corresponding to the
-displayed revision.
+Код распространяется по GNU AGPL-3.0-or-later, JSON-контракт — CC0,
+публичные демонстрационные тексты — CC BY-SA 4.0. Подробная карта лицензий:
+`LICENSES.md`.

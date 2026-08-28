@@ -7,6 +7,7 @@ const state = {
   camera: { yaw: -0.55, pitch: 0.35, zoom: 1 },
   pointer: null,
   renderedNodes: [],
+  session: null,
 };
 
 const canvas = document.querySelector("#map");
@@ -22,6 +23,20 @@ const search = document.querySelector("#search");
 const searchResults = document.querySelector("#search-results");
 const version = document.querySelector("#version");
 const provenance = document.querySelector("#provenance");
+const pointActions = document.querySelector("#point-actions");
+const accountLink = document.querySelector("#account-link");
+const createLink = document.querySelector("#create-link");
+const logoutButton = document.querySelector("#logout");
+
+async function api(path, options = {}) {
+  const headers = { ...(options.headers || {}) };
+  if (options.body) headers["Content-Type"] = "application/json";
+  if (state.session?.csrfToken) headers["X-CSRF-Token"] = state.session.csrfToken;
+  const response = await fetch(path, { ...options, headers, cache: "no-store" });
+  const payload = await response.json();
+  if (!response.ok) throw new Error(payload.error || `HTTP ${response.status}`);
+  return payload;
+}
 
 function conceptById(id) {
   return state.index.concepts.find((concept) => concept.id === id);
@@ -171,7 +186,7 @@ function drawMap() {
   const nodes = visible.map((concept) => {
     const position = localPosition(concept, focus);
     const screen = project(position, width, height);
-    const baseRadius = concept.id === focus.id ? 18 : 7 + Math.sqrt(concept.incomingCount + 1) * 4;
+    const baseRadius = concept.id === focus.id ? 18 : 7 + Math.sqrt(concept.weight + 1) * 6;
     return {
       concept,
       position,
@@ -223,14 +238,14 @@ function renderLabels(nodes, axisLabels, width, height) {
     labels.append(label);
   }
   const occupied = [];
-  const orderedNodes = [...nodes].sort((left, right) => Number(right.focus) - Number(left.focus) || right.concept.incomingCount - left.concept.incomingCount);
+  const orderedNodes = [...nodes].sort((left, right) => Number(right.focus) - Number(left.focus) || right.concept.weight - left.concept.weight);
   for (const node of orderedNodes) {
     const button = document.createElement("button");
     button.type = "button";
     button.className = "node-label";
     button.append(document.createTextNode(node.concept.title));
     const rating = document.createElement("small");
-    rating.textContent = `↗ ${node.concept.incomingCount}`;
+    rating.textContent = `вес ${node.concept.weight.toFixed(2)}`;
     button.append(rating);
     button.addEventListener("click", () => navigate(node.concept.id));
     button.style.visibility = "hidden";
@@ -270,15 +285,16 @@ function escapeHtml(value) {
 
 function inlineMarkdown(value) {
   return value
+    .replace(/\[\[([a-z0-9][a-z0-9-]{0,63})(?:\|([^\]]+))?\]\]/gi, (_, id, label) => {
+      const target = conceptById(id);
+      return target ? `<a href="#${target.id}" data-concept-id="${target.id}">${label || target.title}</a>` : (label || id);
+    })
     .replace(/\[([^\]]+)\]\(([^)]+)\)/g, (_, label, href) => {
       const safeLabel = label;
       if (/^(?:https?:)?\/\//i.test(href)) {
         return `<a href="${href}" rel="noopener noreferrer">${safeLabel}</a>`;
       }
-      const focus = conceptById(state.focusId);
-      const targetPath = new URL(href, `https://hexrelatum.invalid/${focus.path}`).pathname.replace(/^\//, "");
-      const target = state.index.concepts.find((concept) => concept.path === targetPath);
-      return target ? `<a href="#${target.id}" data-concept-id="${target.id}">${safeLabel}</a>` : safeLabel;
+      return safeLabel;
     })
     .replace(/`([^`]+)`/g, "<code>$1</code>")
     .replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>")
@@ -336,7 +352,8 @@ function renderMarkdown(markdown) {
 function renderFocus() {
   const focus = conceptById(state.focusId);
   focusTitle.textContent = focus.title;
-  focusStats.textContent = `входящих упоминаний ${focus.incomingCount} · связей ${focus.linkedIds.length} · шесть координат ${focus.coordinates.join(" · ")}`;
+  focusStats.textContent = `${focus.kind === "user" ? "пользователь" : "пост"} · вес ${focus.weight.toFixed(4)} · входящих связей ${focus.incomingCount} · связей ${focus.linkedIds.length} · координаты ${focus.coordinates.join(" · ")}`;
+  renderPointActions(focus);
   articleBody.innerHTML = renderMarkdown(focus.body);
   articleBody.querySelectorAll("[data-concept-id]").forEach((link) => {
     link.addEventListener("click", (event) => {
@@ -345,7 +362,7 @@ function renderFocus() {
     });
   });
   backButton.disabled = state.history.length < 2;
-  document.title = `${focus.title} · Hexrelatum`;
+  document.title = `${focus.title} · Кринжевики`;
   drawMap();
 }
 
@@ -359,22 +376,43 @@ function navigate(id, { remember = true } = {}) {
 }
 
 function renderProvenance() {
-  const data = state.index.provenance;
-  version.textContent = `Hexrelatum ${state.index.engineVersion} · индекс ${state.index.formatVersion}`;
-  const links = [
-    ["Репозиторий этой вики", data.repository],
-    ["Репозиторий-родитель", data.parentRepository],
-    ["Первоисточник", data.upstreamRepository],
-    ["Лицензии", `${data.repository}/blob/${data.defaultBranch}/LICENSES.md`],
-    ["Скачать", `${data.repository}/archive/refs/heads/${data.defaultBranch}.zip`],
-  ];
-  provenance.replaceChildren(...links.filter(([, href]) => href).map(([label, href]) => {
-    const link = document.createElement("a");
-    link.href = href;
-    link.textContent = label;
-    link.rel = "noopener noreferrer";
-    return link;
-  }));
+  version.textContent = `Кринжевики ${state.index.engineVersion} · масса ${state.index.mass.total.toFixed(4)} / ${state.index.mass.users}`;
+}
+
+function renderAccount() {
+  const user = state.session.user;
+  accountLink.textContent = user ? user.username : "Войти";
+  accountLink.href = user ? `#user-${user.id}` : "login.html";
+  createLink.hidden = !user;
+  logoutButton.hidden = !user;
+}
+
+function renderPointActions(focus) {
+  pointActions.replaceChildren();
+  if (!state.session.user) {
+    pointActions.innerHTML = '<a href="login.html">Войдите</a>, чтобы голосовать и поддерживать.';
+    return;
+  }
+  const support = document.createElement("button");
+  support.textContent = focus.supported ? "Не поддерживать" : "Поддержать";
+  support.addEventListener("click", async () => {
+    await api(`/api/points/${focus.id}/support`, { method: "POST", body: JSON.stringify({ enabled: !focus.supported }) });
+    await reloadIndex();
+  });
+  pointActions.append(support);
+  state.index.axes.forEach((axis, axisIndex) => {
+    [axis.positive, axis.negative].forEach((label, side) => {
+      const pole = axisIndex * 2 + side;
+      const button = document.createElement("button");
+      button.textContent = `+ ${label}`;
+      button.classList.toggle("selected", focus.selectedPole === pole);
+      button.addEventListener("click", async () => {
+        await api(`/api/points/${focus.id}/vote`, { method: "POST", body: JSON.stringify({ pole }) });
+        await reloadIndex();
+      });
+      pointActions.append(button);
+    });
+  });
 }
 
 function renderSearch() {
@@ -437,15 +475,24 @@ brand.addEventListener("click", (event) => {
 });
 search.addEventListener("input", renderSearch);
 window.addEventListener("resize", drawMap);
+logoutButton.addEventListener("click", async () => {
+  await api("/api/logout", { method: "POST", body: "{}" });
+  state.session = await api("/api/session");
+  await reloadIndex();
+});
+
+async function reloadIndex() {
+  state.index = await api("/api/index");
+  renderAccount();
+  renderProvenance();
+  const requested = state.focusId || location.hash.slice(1);
+  navigate(conceptById(requested) ? requested : state.index.homeId, { remember: false });
+}
 
 async function start() {
   try {
-    const response = await fetch("../public/index.json", { cache: "no-store" });
-    if (!response.ok) throw new Error(`HTTP ${response.status}`);
-    state.index = await response.json();
-    renderProvenance();
-    const requested = location.hash.slice(1);
-    navigate(conceptById(requested) ? requested : state.index.homeId);
+    state.session = await api("/api/session");
+    await reloadIndex();
   } catch (error) {
     focusTitle.textContent = "Не удалось открыть индекс";
     focusStats.textContent = String(error);

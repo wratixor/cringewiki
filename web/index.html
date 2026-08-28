@@ -4,15 +4,15 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="color-scheme" content="dark">
-  <title>Hexrelatum</title>
+  <title>Кринжевики</title>
   <link rel="icon" href="favicon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
   <header class="topbar">
-    <a id="brand" class="brand" href="#" aria-label="Hexrelatum — на главную">
+    <a id="brand" class="brand" href="#" aria-label="Кринжевики — на главную">
       <span class="brand-mark" aria-hidden="true"></span>
-      <span><strong>Hexrelatum</strong><small>открытая пространственная вики</small></span>
+      <span><strong>Кринжевики</strong><small>карта реакторского знания</small></span>
     </a>
     <h1 id="focus-title" class="focus-title">Загрузка…</h1>
     <button id="back" class="back-button" type="button" disabled>← Назад</button>
@@ -21,6 +21,11 @@
       <input id="search" type="search" placeholder="Поиск концепта" autocomplete="off">
       <span id="search-results" class="search-results"></span>
     </label>
+    <nav class="account-nav" aria-label="Учётная запись">
+      <a id="create-link" href="editor.html">Новый пост</a>
+      <a id="account-link" href="login.html">Войти</a>
+      <button id="logout" type="button" hidden>Выйти</button>
+    </nav>
   </header>
 
   <main>
@@ -34,13 +39,18 @@
 
     <article id="article" class="article-card" aria-live="polite">
       <p id="focus-stats" class="article-meta"></p>
+      <div id="point-actions" class="point-actions"></div>
       <div id="article-body"></div>
     </article>
   </main>
 
   <footer>
     <span id="version"></span>
-    <nav id="provenance" aria-label="Исходный код и лицензии"></nav>
+    <nav id="provenance" aria-label="Исходный код и лицензии">
+      <a href="https://github.com/wratixor/cringewiki">Исходный код</a>
+      <a href="https://github.com/wratixor/cringewiki/archive/refs/heads/main.zip">Скачать</a>
+      <a href="https://github.com/wratixor/hexrelatum">Основа: Hexrelatum</a>
+    </nav>
   </footer>
 
   <script src="app.js" defer></script>

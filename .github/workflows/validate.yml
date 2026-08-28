@@ -18,11 +18,9 @@ jobs:
       - uses: actions/setup-node@v6
         with:
           node-version: "22"
-      - name: Verify generated indexes
-        run: python tools/build_index.py --check
       - name: Run tests
         run: python -m unittest discover -s tests -v
       - name: Check Python syntax
-        run: python -m compileall -q tools tests
+        run: python -m compileall -q server tests
       - name: Check JavaScript syntax
-        run: node --check web/app.js
+        run: node --check web/app.js && node --check web/form.js
