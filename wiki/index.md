@@ -1,7 +1,7 @@
 ---
 id: hexrelatum
 title: Hexrelatum
-coordinates: [3, 2, 5, 4, 2, 6]
+coordinates: [7, 2, 7, 2, 5, 6]
 home: true
 map: true
 ---
@@ -12,8 +12,9 @@ Hexrelatum — открытая Git-вики, в которой любая ст�
 центром карты непосредственно связанных знаний.
 
 Начать знакомство можно с [устройства движка](engine/about.md),
-[формата статьи](engine/article-format.md), [графа](mathematics/graph.md) или
-[кошки](cats/cat.md).
+[формата статьи](engine/article-format.md), [графа](mathematics/graph.md),
+[кошки](cats/cat.md), [квантовой физики](science/quantum-physics.md) или
+[Гарри Поттера](culture/harry-potter.md).
 
 Исходные знания хранятся в Markdown, а карта воспроизводимо собирается открытым
 локальным индексатором. Вики можно читать, клонировать и изменять вместе с её

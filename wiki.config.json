@@ -1,0 +1,20 @@
+{
+  "axisSemanticsVersion": "general-knowledge-preview-v0",
+  "axes": [
+    {
+      "id": "order-chaos",
+      "positive": "Порядок",
+      "negative": "Хаос"
+    },
+    {
+      "id": "reality-fiction",
+      "positive": "Действительность",
+      "negative": "Вымысел"
+    },
+    {
+      "id": "concrete-abstract",
+      "positive": "Конкретное",
+      "negative": "Абстрактное"
+    }
+  ]
+}

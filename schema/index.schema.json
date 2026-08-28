@@ -3,11 +3,27 @@
   "$id": "https://github.com/wratixor/hexrelatum/schema/index.schema.json",
   "title": "Hexrelatum public index",
   "type": "object",
-  "required": ["formatVersion", "engineVersion", "projection", "homeId", "concepts"],
+  "required": ["formatVersion", "engineVersion", "projection", "axisSemanticsVersion", "axes", "homeId", "concepts"],
   "properties": {
-    "formatVersion": { "const": "0.1" },
+    "formatVersion": { "const": "0.2" },
     "engineVersion": { "type": "string" },
     "projection": { "const": "paired-balance-preview-v0" },
+    "axisSemanticsVersion": { "type": "string", "pattern": "^[a-z0-9][a-z0-9-]*$" },
+    "axes": {
+      "type": "array",
+      "minItems": 3,
+      "maxItems": 3,
+      "items": {
+        "type": "object",
+        "required": ["id", "positive", "negative"],
+        "properties": {
+          "id": { "type": "string", "pattern": "^[a-z0-9][a-z0-9-]*$" },
+          "positive": { "type": "string", "minLength": 1, "maxLength": 32 },
+          "negative": { "type": "string", "minLength": 1, "maxLength": 32 }
+        },
+        "additionalProperties": false
+      }
+    },
     "homeId": { "type": "string", "minLength": 1 },
     "provenance": { "type": "object" },
     "concepts": {

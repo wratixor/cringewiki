@@ -19,7 +19,7 @@ story, not a dependency on somebody else's visual identity.
 
 ## Current status
 
-This is the initial `0.1.0-dev` scaffold. It establishes the public repository,
+This is the initial `0.2.0-dev` scaffold. It establishes the public repository,
 content contract, reference indexer, reproducible fixtures, and a minimal local
 reader. The projection and color preview are explicitly versioned as provisional
 and are not a final semantic or color-science decision.
@@ -76,6 +76,11 @@ Rules:
 - external links remain ordinary outbound references and are never fetched by
   the indexer.
 
+The three opposed pairs are named in `wiki.config.json`. The bundled general-
+knowledge preview uses **Order ↔ Chaos**, **Reality ↔ Fiction**, and
+**Concrete ↔ Abstract**. These names and the color preview remain provisional;
+forks may define another versioned axis vocabulary without changing reader code.
+
 The main article has no privileged coordinates. Its only special property is
 that it opens first, so it should link directly to the important entry points.
 
@@ -86,6 +91,7 @@ engine contract     schema/
 reference indexer   tools/
 static reader       web/
 all public knowledge wiki/
+wiki axis semantics wiki.config.json
 generated indexes   public/
 validation           tests/ and .github/workflows/
 licensing            LICENSE, LICENSES/, LICENSES.md

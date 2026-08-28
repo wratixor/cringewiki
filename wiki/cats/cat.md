@@ -1,7 +1,7 @@
 ---
 id: cat
 title: Кошка
-coordinates: [4, 5, 7, 2, 3, 4]
+coordinates: [5, 6, 10, 1, 10, 2]
 home: false
 map: false
 ---

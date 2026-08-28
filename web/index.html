@@ -10,39 +10,32 @@
 </head>
 <body>
   <header class="topbar">
-    <a class="brand" href="#" aria-label="Hexrelatum — на главную">
+    <a id="brand" class="brand" href="#" aria-label="Hexrelatum — на главную">
       <span class="brand-mark" aria-hidden="true"></span>
       <span><strong>Hexrelatum</strong><small>открытая пространственная вики</small></span>
     </a>
-    <label class="search">Поиск
-      <input id="search" type="search" placeholder="Название концепта" autocomplete="off">
+    <h1 id="focus-title" class="focus-title">Загрузка…</h1>
+    <button id="back" class="back-button" type="button" disabled>← Назад</button>
+    <label class="search">
+      <span class="visually-hidden">Поиск концепта</span>
+      <input id="search" type="search" placeholder="Поиск концепта" autocomplete="off">
       <span id="search-results" class="search-results"></span>
     </label>
   </header>
 
   <main>
     <section class="map-card" aria-labelledby="focus-title">
-      <div class="map-heading">
-        <div>
-          <p class="eyebrow">Локальный центр · 0 · 0 · 0</p>
-          <h1 id="focus-title">Загрузка…</h1>
-          <p id="focus-stats" class="stats"></p>
-        </div>
-        <div class="map-actions">
-          <button id="back" type="button" disabled>Назад</button>
-          <button id="home" type="button">Главная</button>
-          <button id="reset-view" type="button">Сбросить обзор</button>
-        </div>
-      </div>
-
       <div id="map-stage" class="map-stage">
         <canvas id="map" width="1200" height="700" aria-label="Трёхмерная карта связанных концептов"></canvas>
         <div id="labels" class="labels"></div>
       </div>
-      <p class="map-help">Тяните карту для вращения, используйте колесо для масштаба. Показаны только непосредственно связанные статьи. Нажать можно и на сферу, и на её заголовок.</p>
+      <p class="map-help">Тяните карту для вращения, используйте колесо для масштаба. Показаны непосредственно связанные статьи и все связи между ними. Нажать можно и на сферу, и на её заголовок.</p>
     </section>
 
-    <article id="article" class="article-card" aria-live="polite"></article>
+    <article id="article" class="article-card" aria-live="polite">
+      <p id="focus-stats" class="article-meta"></p>
+      <div id="article-body"></div>
+    </article>
   </main>
 
   <footer>

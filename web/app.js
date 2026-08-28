@@ -15,9 +15,9 @@ const labels = document.querySelector("#labels");
 const focusTitle = document.querySelector("#focus-title");
 const focusStats = document.querySelector("#focus-stats");
 const article = document.querySelector("#article");
+const articleBody = document.querySelector("#article-body");
+const brand = document.querySelector("#brand");
 const backButton = document.querySelector("#back");
-const homeButton = document.querySelector("#home");
-const resetViewButton = document.querySelector("#reset-view");
 const search = document.querySelector("#search");
 const searchResults = document.querySelector("#search-results");
 const version = document.querySelector("#version");
@@ -106,7 +106,7 @@ function resizeCanvas() {
   return { width: rectangle.width, height: rectangle.height };
 }
 
-function drawAxis(width, height, axis, negativeColor, positiveColor) {
+function drawAxis(width, height, axis, semantics, negativeColor, positiveColor) {
   const centre = project({ x: 0, y: 0, z: 0 }, width, height);
   const negativePosition = { x: 0, y: 0, z: 0 };
   const positivePosition = { x: 0, y: 0, z: 0 };
@@ -131,6 +131,10 @@ function drawAxis(width, height, axis, negativeColor, positiveColor) {
     context.arc(point.x, point.y, 3.5, 0, Math.PI * 2);
     context.fill();
   }
+  return [
+    { screen: negative, centre, text: semantics.negative, color: negativeColor },
+    { screen: positive, centre, text: semantics.positive, color: positiveColor },
+  ];
 }
 
 function drawSphere(node) {
@@ -158,9 +162,11 @@ function drawMap() {
   const focus = conceptById(state.focusId);
   const visible = [focus, ...focus.linkedIds.map(conceptById).filter(Boolean)];
 
-  drawAxis(width, height, "x", "rgba(0, 210, 220, .65)", "rgba(238, 72, 74, .65)");
-  drawAxis(width, height, "y", "rgba(214, 70, 214, .65)", "rgba(62, 206, 112, .65)");
-  drawAxis(width, height, "z", "rgba(240, 205, 44, .65)", "rgba(65, 112, 238, .65)");
+  const axisLabels = [
+    ...drawAxis(width, height, "x", state.index.axes[0], "rgba(0, 210, 220, .65)", "rgba(238, 72, 74, .65)"),
+    ...drawAxis(width, height, "y", state.index.axes[1], "rgba(214, 70, 214, .65)", "rgba(62, 206, 112, .65)"),
+    ...drawAxis(width, height, "z", state.index.axes[2], "rgba(240, 205, 44, .65)", "rgba(65, 112, 238, .65)"),
+  ];
 
   const nodes = visible.map((concept) => {
     const position = localPosition(concept, focus);
@@ -176,35 +182,83 @@ function drawMap() {
     };
   }).sort((left, right) => left.screen.z - right.screen.z);
 
-  const focusNode = nodes.find((node) => node.focus);
+  const nodesById = new Map(nodes.map((node) => [node.concept.id, node]));
+  const edges = [];
+  const seenEdges = new Set();
+  for (const node of nodes) {
+    for (const linkedId of node.concept.linkedIds) {
+      if (!nodesById.has(linkedId)) continue;
+      const edgeId = [node.concept.id, linkedId].sort().join("\u0000");
+      if (seenEdges.has(edgeId)) continue;
+      seenEdges.add(edgeId);
+      edges.push([node, nodesById.get(linkedId)]);
+    }
+  }
   context.strokeStyle = "rgba(160, 180, 210, .2)";
   context.lineWidth = 1;
-  for (const node of nodes) {
-    if (node.focus) continue;
+  for (const [source, target] of edges) {
     context.beginPath();
-    context.moveTo(focusNode.screen.x, focusNode.screen.y);
-    context.lineTo(node.screen.x, node.screen.y);
+    context.moveTo(source.screen.x, source.screen.y);
+    context.lineTo(target.screen.x, target.screen.y);
     context.stroke();
   }
+  canvas.dataset.edgeCount = String(edges.length);
   nodes.forEach(drawSphere);
   state.renderedNodes = nodes;
-  renderLabels(nodes);
+  renderLabels(nodes, axisLabels, width, height);
 }
 
-function renderLabels(nodes) {
+function renderLabels(nodes, axisLabels, width, height) {
   labels.replaceChildren();
-  for (const node of nodes) {
+  for (const axis of axisLabels) {
+    const deltaX = axis.screen.x - axis.centre.x;
+    const deltaY = axis.screen.y - axis.centre.y;
+    const length = Math.hypot(deltaX, deltaY) || 1;
+    const label = document.createElement("span");
+    label.className = "axis-label";
+    label.textContent = axis.text;
+    label.style.left = `${clamp(axis.screen.x + deltaX / length * 22, 52, width - 52)}px`;
+    label.style.top = `${clamp(axis.screen.y + deltaY / length * 22, 16, height - 16)}px`;
+    label.style.setProperty("--axis-color", axis.color);
+    labels.append(label);
+  }
+  const occupied = [];
+  const orderedNodes = [...nodes].sort((left, right) => Number(right.focus) - Number(left.focus) || right.concept.incomingCount - left.concept.incomingCount);
+  for (const node of orderedNodes) {
     const button = document.createElement("button");
     button.type = "button";
     button.className = "node-label";
-    button.style.left = `${node.screen.x}px`;
-    button.style.top = `${node.screen.y - node.radius}px`;
     button.append(document.createTextNode(node.concept.title));
     const rating = document.createElement("small");
     rating.textContent = `↗ ${node.concept.incomingCount}`;
     button.append(rating);
     button.addEventListener("click", () => navigate(node.concept.id));
+    button.style.visibility = "hidden";
     labels.append(button);
+    const labelWidth = button.offsetWidth;
+    const labelHeight = button.offsetHeight;
+    const gap = 10;
+    const candidates = [
+      { x: node.screen.x - labelWidth / 2, y: node.screen.y - node.radius - labelHeight - gap },
+      { x: node.screen.x + node.radius + gap, y: node.screen.y - labelHeight / 2 },
+      { x: node.screen.x - node.radius - labelWidth - gap, y: node.screen.y - labelHeight / 2 },
+      { x: node.screen.x - labelWidth / 2, y: node.screen.y + node.radius + gap },
+    ].map((candidate) => ({
+      x: clamp(candidate.x, 6, Math.max(6, width - labelWidth - 6)),
+      y: clamp(candidate.y, 6, Math.max(6, height - labelHeight - 6)),
+      width: labelWidth,
+      height: labelHeight,
+    }));
+    const chosen = candidates.find((candidate) => !occupied.some((placed) => (
+      candidate.x < placed.x + placed.width + 6
+      && candidate.x + candidate.width + 6 > placed.x
+      && candidate.y < placed.y + placed.height + 6
+      && candidate.y + candidate.height + 6 > placed.y
+    ))) || candidates[0];
+    button.style.left = `${chosen.x}px`;
+    button.style.top = `${chosen.y}px`;
+    button.style.visibility = "visible";
+    occupied.push(chosen);
   }
 }
 
@@ -283,8 +337,8 @@ function renderFocus() {
   const focus = conceptById(state.focusId);
   focusTitle.textContent = focus.title;
   focusStats.textContent = `входящих упоминаний ${focus.incomingCount} · связей ${focus.linkedIds.length} · шесть координат ${focus.coordinates.join(" · ")}`;
-  article.innerHTML = renderMarkdown(focus.body);
-  article.querySelectorAll("[data-concept-id]").forEach((link) => {
+  articleBody.innerHTML = renderMarkdown(focus.body);
+  articleBody.querySelectorAll("[data-concept-id]").forEach((link) => {
     link.addEventListener("click", (event) => {
       event.preventDefault();
       navigate(link.dataset.conceptId);
@@ -377,10 +431,9 @@ backButton.addEventListener("click", () => {
   state.history.pop();
   navigate(state.history.at(-1), { remember: false });
 });
-homeButton.addEventListener("click", () => navigate(state.index.homeId));
-resetViewButton.addEventListener("click", () => {
-  state.camera = { yaw: -0.55, pitch: 0.35, zoom: 1 };
-  drawMap();
+brand.addEventListener("click", (event) => {
+  event.preventDefault();
+  navigate(state.index.homeId);
 });
 search.addEventListener("input", renderSearch);
 window.addEventListener("resize", drawMap);

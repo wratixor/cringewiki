@@ -31,9 +31,13 @@ class BuildIndexTests(unittest.TestCase):
             build_index.build(REPOSITORY_ROOT, output_dir)
             payload = json.loads((output_dir / "index.json").read_text(encoding="utf-8"))
 
-            self.assertEqual(payload["formatVersion"], "0.1")
+            self.assertEqual(payload["formatVersion"], "0.2")
             self.assertEqual(payload["homeId"], "hexrelatum")
-            self.assertGreaterEqual(len(payload["concepts"]), 8)
+            self.assertGreaterEqual(len(payload["concepts"]), 11)
+            self.assertEqual(
+                [(axis["positive"], axis["negative"]) for axis in payload["axes"]],
+                [("Порядок", "Хаос"), ("Действительность", "Вымысел"), ("Конкретное", "Абстрактное")],
+            )
             self.assertTrue(all(len(item["coordinates"]) == 6 for item in payload["concepts"]))
 
             connection = sqlite3.connect(output_dir / "index.sqlite3")
@@ -68,6 +72,15 @@ class BuildIndexTests(unittest.TestCase):
             )
             with self.assertRaises(build_index.IndexBuildError):
                 build_index.parse_article(article, wiki_root)
+
+    def test_rejects_incomplete_axis_configuration(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            (root / "wiki.config.json").write_text(
+                '{"axisSemanticsVersion":"preview-v0","axes":[]}', encoding="utf-8"
+            )
+            with self.assertRaises(build_index.IndexBuildError):
+                build_index.load_axes(root)
 
 
 if __name__ == "__main__":

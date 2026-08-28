@@ -1,7 +1,7 @@
 ---
 id: article-format
 title: Формат статьи
-coordinates: [3, 4, 2, 5, 4, 3]
+coordinates: [9, 1, 8, 1, 8, 4]
 home: false
 map: false
 ---

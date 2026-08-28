@@ -18,11 +18,12 @@ from pathlib import Path
 from urllib.parse import unquote, urlsplit
 
 
-FORMAT_VERSION = "0.1"
+FORMAT_VERSION = "0.2"
 PROJECTION_VERSION = "paired-balance-preview-v0"
 ID_PATTERN = re.compile(r"^[a-z0-9][a-z0-9-]*$")
 LINK_PATTERN = re.compile(r"(?<!!)\[([^\]]+)\]\(([^)]+)\)")
 ALLOWED_FIELDS = {"id", "title", "coordinates", "home", "map"}
+AXIS_LABEL_MAX_LENGTH = 32
 
 
 class IndexBuildError(ValueError):
@@ -38,6 +39,34 @@ class Article:
     map_first: bool
     path: Path
     body: str
+
+
+def load_axes(repository_root: Path) -> tuple[str, list[dict[str, str]]]:
+    path = repository_root / "wiki.config.json"
+    configuration = json.loads(path.read_text(encoding="utf-8"))
+    if set(configuration) != {"axisSemanticsVersion", "axes"}:
+        raise IndexBuildError(f"{path}: expected only axisSemanticsVersion and axes")
+    version = configuration["axisSemanticsVersion"]
+    axes = configuration["axes"]
+    if not isinstance(version, str) or not ID_PATTERN.fullmatch(version):
+        raise IndexBuildError(f"{path}: axisSemanticsVersion must be a stable lowercase-hyphen id")
+    if not isinstance(axes, list) or len(axes) != 3:
+        raise IndexBuildError(f"{path}: axes must contain exactly three opposed pairs")
+    validated: list[dict[str, str]] = []
+    seen_ids: set[str] = set()
+    for index, axis in enumerate(axes):
+        if not isinstance(axis, dict) or set(axis) != {"id", "positive", "negative"}:
+            raise IndexBuildError(f"{path}: axis {index} must contain id, positive and negative")
+        axis_id = axis["id"]
+        if not isinstance(axis_id, str) or not ID_PATTERN.fullmatch(axis_id) or axis_id in seen_ids:
+            raise IndexBuildError(f"{path}: axis {index} has an invalid or duplicate id")
+        seen_ids.add(axis_id)
+        for pole in ("positive", "negative"):
+            label = axis[pole]
+            if not isinstance(label, str) or not label.strip() or len(label) > AXIS_LABEL_MAX_LENGTH:
+                raise IndexBuildError(f"{path}: axis {index} {pole} must contain 1..{AXIS_LABEL_MAX_LENGTH} characters")
+        validated.append({"id": axis_id, "positive": axis["positive"].strip(), "negative": axis["negative"].strip()})
+    return version, validated
 
 
 def parse_bool(raw: str, *, field: str, path: Path) -> bool:
@@ -177,6 +206,7 @@ def build_payload(repository_root: Path) -> tuple[dict[str, object], list[tuple[
 
     provenance = json.loads((repository_root / "provenance.json").read_text(encoding="utf-8"))
     engine_version = (repository_root / "VERSION").read_text(encoding="utf-8").strip()
+    axis_semantics_version, axes = load_axes(repository_root)
     home_id = next(article.id for article in articles if article.home)
 
     concepts: list[dict[str, object]] = []
@@ -207,6 +237,8 @@ def build_payload(repository_root: Path) -> tuple[dict[str, object], list[tuple[
         "formatVersion": FORMAT_VERSION,
         "engineVersion": engine_version,
         "projection": PROJECTION_VERSION,
+        "axisSemanticsVersion": axis_semantics_version,
+        "axes": axes,
         "homeId": home_id,
         "provenance": provenance,
         "concepts": concepts,
@@ -267,6 +299,8 @@ def write_sqlite(
             "formatVersion": str(payload["formatVersion"]),
             "engineVersion": str(payload["engineVersion"]),
             "projection": str(payload["projection"]),
+            "axisSemanticsVersion": str(payload["axisSemanticsVersion"]),
+            "axes": json.dumps(payload["axes"], ensure_ascii=False, sort_keys=True),
             "homeId": str(payload["homeId"]),
             "provenance": json.dumps(payload["provenance"], ensure_ascii=False, sort_keys=True),
         }

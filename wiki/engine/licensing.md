@@ -1,7 +1,7 @@
 ---
 id: licensing
 title: Открытость и лицензии
-coordinates: [4, 3, 6, 2, 3, 5]
+coordinates: [8, 2, 9, 1, 7, 5]
 home: false
 map: false
 ---

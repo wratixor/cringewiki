@@ -1,7 +1,7 @@
 ---
 id: everything-bagel
 title: Бейгл знаний
-coordinates: [5, 3, 5, 3, 5, 3]
+coordinates: [4, 7, 2, 8, 7, 4]
 home: false
 map: false
 ---
