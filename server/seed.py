@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from .app import DB_PATH
-from .db import connect, initialize
+from .db import connect, ensure_users_concept, initialize
 from .security import hash_password
 
 USERS = [("reactor", [5, 6, 7, 4, 7, 3]), ("kotoman", [2, 8, 9, 2, 6, 5]), ("archivarius", [3, 7, 4, 8, 10, 2]), ("newfag", [7, 4, 7, 4, 2, 9]), ("seriouscat", [3, 9, 2, 10, 6, 5])]
@@ -57,6 +57,9 @@ def seed(path=DB_PATH) -> bool:
             point_id = connection.execute("INSERT INTO points(slug,kind,title,c0,c1,c2,c3,c4,c5) VALUES (?,?,?,?,?,?,?,?,?)", (f"user-{user_id}", "user", username, *coordinates)).lastrowid
             connection.execute("INSERT INTO profiles VALUES (?,?)", (user_id, point_id))
             user_ids.append(user_id); point_ids.append(point_id)
+        users_point = ensure_users_concept(connection)
+        for point_id in point_ids:
+            connection.execute("INSERT OR IGNORE INTO point_links VALUES (?, ?, 'content')", (point_id, users_point))
         article_points = {}
         for article in ARTICLES:
             slug, title, body, coordinates, author_number, *action = article

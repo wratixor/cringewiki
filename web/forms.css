@@ -2,6 +2,7 @@
 .form-page { width: min(48rem, calc(100% - 2rem)); margin: 3rem auto; }
 .form-card { display: grid; gap: 1rem; padding: clamp(1.2rem, 4vw, 2.5rem); border: 1px solid #354156; border-radius: 1rem; background: #0d121c; }
 .form-card h1 { margin: 0; }
+.form-card h2 { margin: 0; font-size: 1.1rem; }
 .form-card label { display: grid; gap: .35rem; color: #b8c3d4; }
 .form-card input:not([type="range"]), .form-card textarea { width: 100%; border: 1px solid #354156; border-radius: .6rem; padding: .7rem; color: #fff; background: #090d15; }
 .form-card textarea { min-height: 18rem; resize: vertical; }
@@ -11,5 +12,12 @@
 .coordinate-control output { min-width: 1.65rem; padding: .08rem .35rem; border-radius: .35rem; color: color-mix(in srgb, var(--pole-color) 82%, white); background: color-mix(in srgb, var(--pole-color) 16%, transparent); font-weight: 700; text-align: center; }
 .coordinate-control input[type="range"] { width: 100%; margin: 0; padding: 0; cursor: ew-resize; }
 .form-links { display: flex; justify-content: space-between; }
+.tag-editor { display: grid; gap: .75rem; padding: 1rem; border: 1px solid #354156; border-radius: .75rem; background: rgba(8, 11, 17, .45); }
+.tag-editor p { margin: 0; color: #93a4bc; font-size: .88rem; }
+.tag-list, .tag-suggestions { display: flex; flex-wrap: wrap; gap: .45rem; }
+.tag-chip, .tag-suggestions button { border: 1px solid #465574; border-radius: 999px; padding: .28rem .6rem; color: #c8d9fa; background: #101622; font-size: .86rem; }
+.tag-chip button { margin-left: .35rem; border: 0; padding: 0; color: #f3b0b0; background: transparent; }
+.tag-chip.fixed { border-color: #6d82aa; color: #d3def4; }
+.tag-suggestions:empty { display: none; }
 #message { min-height: 1.5rem; color: #f0c955; }
 @media (max-width: 600px) { .coordinate-grid { grid-template-columns: 1fr; } }

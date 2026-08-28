@@ -24,6 +24,7 @@ const searchResults = document.querySelector("#search-results");
 const version = document.querySelector("#version");
 const provenance = document.querySelector("#provenance");
 const pointActions = document.querySelector("#point-actions");
+const articleTags = document.querySelector("#article-tags");
 const accountLink = document.querySelector("#account-link");
 const createLink = document.querySelector("#create-link");
 const registerLink = document.querySelector("#register-link");
@@ -80,6 +81,19 @@ function previewColor(position) {
   const channels = [0, 1, 2].map((axis) => mix(pairs[axis][0], pairs[axis][1], (values[axis] + 1) / 2));
   const rgb = [0, 1, 2].map((channel) => Math.round(channels.reduce((sum, color) => sum + color[channel], 0) / 3));
   return `rgb(${rgb.join(", ")})`;
+}
+
+function conceptColor(concept) {
+  const coordinates = concept.coordinates;
+  return previewColor({
+    x: (coordinates[0] - coordinates[1]) / (coordinates[0] + coordinates[1]),
+    y: (coordinates[2] - coordinates[3]) / (coordinates[2] + coordinates[3]),
+    z: (coordinates[4] - coordinates[5]) / (coordinates[4] + coordinates[5]),
+  });
+}
+
+function formatCoordinate(value) {
+  return Number.isInteger(value) ? String(value) : value.toFixed(2).replace(/0+$/, "").replace(/\.$/, "");
 }
 
 function rotate(position) {
@@ -369,13 +383,13 @@ function renderFocus() {
   const poleColors = ["#ee484a", "#00d2dc", "#3ece70", "#d646d6", "#4170ee", "#f0cd2c"];
   const poleNames = state.index.axes.flatMap((axis) => [axis.positive, axis.negative]);
   focusStats.replaceChildren(document.createTextNode(
-    `${focus.kind === "user" ? "пользователь" : "пост"} · вес ${focus.weight.toFixed(4)} · входящих связей ${focus.incomingCount} · связей ${focus.linkedIds.length} · координаты `,
+    `${focus.kind === "user" ? "пользователь" : focus.kind === "system" ? "системный концепт" : "пост"} · вес ${focus.weight.toFixed(4)} · входящих связей ${focus.incomingCount} · связей ${focus.linkedIds.length} · координаты `,
   ));
   focus.coordinates.forEach((coordinate, index) => {
     if (index) focusStats.append(document.createTextNode(" · "));
     const value = document.createElement("span");
     value.className = "coordinate-value";
-    value.textContent = coordinate;
+    value.textContent = formatCoordinate(coordinate);
     value.title = `Полюс: ${poleNames[index]}`;
     value.setAttribute("aria-label", `${poleNames[index]}: ${coordinate}`);
     value.style.setProperty("--pole-color", poleColors[index]);
@@ -389,6 +403,25 @@ function renderFocus() {
       navigate(link.dataset.conceptId, { openAction: true });
     });
   });
+  articleTags.replaceChildren();
+  articleTags.hidden = !focus.tagIds.length;
+  if (focus.tagIds.length) {
+    const caption = document.createElement("span");
+    caption.textContent = "Теги";
+    articleTags.append(caption);
+    for (const tagId of focus.tagIds) {
+      const tag = conceptById(tagId);
+      if (!tag) continue;
+      const link = document.createElement("a");
+      link.href = `#${tag.id}`;
+      link.textContent = tag.title;
+      link.addEventListener("click", (event) => {
+        event.preventDefault();
+        navigate(tag.id, { openAction: true });
+      });
+      articleTags.append(link);
+    }
+  }
   backButton.disabled = state.history.length < 2;
   document.title = `${focus.title} · Кринжевики`;
   drawMap();
@@ -414,6 +447,7 @@ function renderAccount() {
   accountLink.textContent = user ? user.username : "Войти";
   accountLink.href = user ? `#user-${user.id}` : "login.html";
   createLink.hidden = !user;
+  createLink.href = `editor.html?parent=${encodeURIComponent(state.focusId || location.hash.slice(1) || state.index.homeId || "")}`;
   registerLink.hidden = Boolean(user);
   logoutButton.hidden = !user;
 }
@@ -426,6 +460,11 @@ function renderPointActions(focus) {
   }
   const support = document.createElement("button");
   support.textContent = focus.supported ? "Не поддерживать" : "Поддержать";
+  support.className = "support-button";
+  support.style.setProperty("--concept-color", conceptColor(focus));
+  const currentUserPoint = conceptById(state.index.currentUserPointId);
+  support.style.setProperty("--user-color", currentUserPoint ? conceptColor(currentUserPoint) : "#354156");
+  support.classList.toggle("selected", focus.supported);
   support.addEventListener("click", async () => {
     await api(`/api/points/${focus.id}/support`, { method: "POST", body: JSON.stringify({ enabled: !focus.supported }) });
     await reloadIndex();
@@ -435,7 +474,9 @@ function renderPointActions(focus) {
     [axis.positive, axis.negative].forEach((label, side) => {
       const pole = axisIndex * 2 + side;
       const button = document.createElement("button");
-      button.textContent = `+ ${label}`;
+      button.textContent = label;
+      button.className = "pole-vote";
+      button.style.setProperty("--pole-color", ["#ee484a", "#00d2dc", "#3ece70", "#d646d6", "#4170ee", "#f0cd2c"][pole]);
       button.classList.toggle("selected", focus.selectedPole === pole);
       button.addEventListener("click", async () => {
         await api(`/api/points/${focus.id}/vote`, { method: "POST", body: JSON.stringify({ pole }) });

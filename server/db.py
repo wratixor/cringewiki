@@ -35,6 +35,7 @@ CREATE TABLE IF NOT EXISTS articles (
   id INTEGER PRIMARY KEY,
   point_id INTEGER NOT NULL UNIQUE REFERENCES points(id) ON DELETE CASCADE,
   author_user_id INTEGER NOT NULL REFERENCES users(id),
+  parent_point_id INTEGER REFERENCES points(id),
   body TEXT NOT NULL CHECK (length(body) <= 100000),
   created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
@@ -109,6 +110,9 @@ def initialize(path: Path) -> None:
         point_columns = {row[1] for row in connection.execute("PRAGMA table_info(points)")}
         if "action_url" not in point_columns:
             connection.execute("ALTER TABLE points ADD COLUMN action_url TEXT")
+        article_columns = {row[1] for row in connection.execute("PRAGMA table_info(articles)")}
+        if "parent_point_id" not in article_columns:
+            connection.execute("ALTER TABLE articles ADD COLUMN parent_point_id INTEGER REFERENCES points(id)")
         version = connection.execute("PRAGMA user_version").fetchone()[0]
         if version < 1:
             columns = ", ".join(
@@ -118,3 +122,21 @@ def initialize(path: Path) -> None:
             connection.execute(f"UPDATE points SET {columns}")
             connection.execute("PRAGMA user_version = 1")
         connection.executescript(COORDINATE_GUARDS)
+        ensure_users_concept(connection)
+
+
+def ensure_users_concept(connection: sqlite3.Connection) -> int:
+    """Create the system tag and link every user point to it."""
+    row = connection.execute("SELECT id FROM points WHERE slug = 'users'").fetchone()
+    if row:
+        point_id = row[0]
+    else:
+        point_id = connection.execute(
+            "INSERT INTO points(slug,kind,title,c0,c1,c2,c3,c4,c5) VALUES ('users','article','Пользователи',1,1,1,1,1,1)"
+        ).lastrowid
+    connection.execute(
+        """INSERT OR IGNORE INTO point_links(source_point_id,target_point_id,kind)
+           SELECT point_id, ?, 'content' FROM profiles WHERE point_id <> ?""",
+        (point_id, point_id),
+    )
+    return point_id

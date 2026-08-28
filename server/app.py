@@ -13,7 +13,7 @@ from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import unquote, urlparse
 
-from .db import connect, initialize
+from .db import connect, ensure_users_concept, initialize
 from .index import build_index
 from .security import hash_password, new_token, token_digest, verify_password
 
@@ -175,6 +175,8 @@ class Handler(SimpleHTTPRequestHandler):
                 (f"user-{user_id}", "user", username, *coordinates),
             ).lastrowid
             connection.execute("INSERT INTO profiles(user_id,point_id) VALUES (?,?)", (user_id, point))
+            users_point = ensure_users_concept(connection)
+            connection.execute("INSERT OR IGNORE INTO point_links VALUES (?, ?, 'content')", (point, users_point))
             connection.execute("UPDATE sessions SET user_id = ?, expires_at = ? WHERE token_hash = ?", (user_id, int(time.time()) + 2592000, session["token_hash"]))
         except Exception as error:
             if "UNIQUE" in str(error):
@@ -192,8 +194,8 @@ class Handler(SimpleHTTPRequestHandler):
 
     def _create_article(self, connection, user_id, data):
         title, body = str(data.get("title", "")).strip(), str(data.get("body", "")).strip()
-        if not 1 <= len(title) <= 128 or not 1 <= len(body) <= 100000:
-            raise ApiError(400, "Заголовок 1–128 символов, текст 1–100000 символов")
+        if not 1 <= len(title) <= 128 or len(body) > 100000:
+            raise ApiError(400, "Заголовок 1–128 символов, текст — до 100000 символов")
         coordinates = self._coordinates(data)
         cap = int(os.environ.get("CRINGEWIKI_MAX_ARTICLES_PER_USER", "99"))
         count = connection.execute("SELECT COUNT(*) FROM articles WHERE author_user_id = ?", (user_id,)).fetchone()[0]
@@ -204,12 +206,22 @@ class Handler(SimpleHTTPRequestHandler):
             "INSERT INTO points(slug,kind,title,c0,c1,c2,c3,c4,c5) VALUES (?,?,?,?,?,?,?,?,?)",
             (slug, "article", title, *coordinates),
         ).lastrowid
-        connection.execute("INSERT INTO articles(point_id,author_user_id,body) VALUES (?,?,?)", (point_id, user_id, body))
+        parent_slug = str(data.get("parentId", "")).strip()
+        tag_slugs = data.get("tags", [])
+        if not isinstance(tag_slugs, list) or len(tag_slugs) > 20 or any(not isinstance(value, str) for value in tag_slugs):
+            raise ApiError(400, "Можно указать до 20 существующих тегов")
         author_point = connection.execute("SELECT point_id FROM profiles WHERE user_id = ?", (user_id,)).fetchone()[0]
+        parent = connection.execute("SELECT id FROM points WHERE slug = ?", (parent_slug,)).fetchone() if parent_slug else None
+        connection.execute(
+            "INSERT INTO articles(point_id,author_user_id,parent_point_id,body) VALUES (?,?,?,?)",
+            (point_id, user_id, parent[0] if parent else None, body),
+        )
         connection.execute("INSERT INTO point_links VALUES (?,?, 'author')", (point_id, author_point))
-        for target_slug in set(INTERNAL_LINK.findall(body)):
+        if parent and parent[0] != point_id and parent[0] != author_point:
+            connection.execute("INSERT OR IGNORE INTO point_links VALUES (?,?, 'content')", (point_id, parent[0]))
+        for target_slug in set(INTERNAL_LINK.findall(body)) | set(tag_slugs):
             target = connection.execute("SELECT id FROM points WHERE slug = ?", (target_slug,)).fetchone()
-            if target and target[0] != point_id:
+            if target and target[0] not in (point_id, author_point):
                 connection.execute("INSERT OR IGNORE INTO point_links VALUES (?,?, 'content')", (point_id, target[0]))
         return {"id": slug}
 
