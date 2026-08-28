@@ -4,6 +4,13 @@ let session;
 const form = document.querySelector("form");
 const message = document.querySelector("#message");
 
+for (const slider of form.querySelectorAll('input[type="range"]')) {
+  const output = form.querySelector(`output[for="${slider.name}"]`);
+  const update = () => { output.value = slider.value; output.textContent = slider.value; };
+  slider.addEventListener("input", update);
+  update();
+}
+
 async function api(path, options = {}) {
   const response = await fetch(path, {
     ...options,

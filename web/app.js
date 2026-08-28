@@ -256,7 +256,7 @@ function renderLabels(nodes, axisLabels, width, height) {
     button.className = "node-label";
     button.append(document.createTextNode(node.concept.title));
     const rating = document.createElement("small");
-    rating.textContent = `ссылок ${node.concept.incomingCount}`;
+    rating.textContent = `↗ ${node.concept.incomingCount}`;
     button.append(rating);
     button.addEventListener("click", () => navigate(node.concept.id));
     button.style.visibility = "hidden";
