@@ -1,0 +1,63 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/wratixor/hexrelatum/schema/index.schema.json",
+  "title": "Hexrelatum public index",
+  "type": "object",
+  "required": ["formatVersion", "engineVersion", "projection", "homeId", "concepts"],
+  "properties": {
+    "formatVersion": { "const": "0.1" },
+    "engineVersion": { "type": "string" },
+    "projection": { "const": "paired-balance-preview-v0" },
+    "homeId": { "type": "string", "minLength": 1 },
+    "provenance": { "type": "object" },
+    "concepts": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "id", "title", "path", "coordinates", "body", "home", "map",
+          "incomingCount", "outgoingIds", "linkedIds", "externalLinks"
+        ],
+        "properties": {
+          "id": { "type": "string", "pattern": "^[a-z0-9][a-z0-9-]*$" },
+          "title": { "type": "string", "minLength": 1, "maxLength": 128 },
+          "path": { "type": "string", "pattern": "^wiki/.+\\.md$" },
+          "coordinates": {
+            "type": "array",
+            "minItems": 6,
+            "maxItems": 6,
+            "items": { "type": "number", "minimum": 1 }
+          },
+          "body": { "type": "string" },
+          "home": { "type": "boolean" },
+          "map": { "type": "boolean" },
+          "incomingCount": { "type": "integer", "minimum": 0 },
+          "outgoingIds": {
+            "type": "array",
+            "items": { "type": "string" },
+            "uniqueItems": true
+          },
+          "linkedIds": {
+            "type": "array",
+            "items": { "type": "string" },
+            "uniqueItems": true
+          },
+          "externalLinks": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["label", "href"],
+              "properties": {
+                "label": { "type": "string" },
+                "href": { "type": "string", "format": "uri" }
+              },
+              "additionalProperties": false
+            }
+          }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}

@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <title>Hexrelatum</title>
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="#" aria-label="Hexrelatum — на главную">
+      <span class="brand-mark" aria-hidden="true"></span>
+      <span><strong>Hexrelatum</strong><small>открытая пространственная вики</small></span>
+    </a>
+    <label class="search">Поиск
+      <input id="search" type="search" placeholder="Название концепта" autocomplete="off">
+      <span id="search-results" class="search-results"></span>
+    </label>
+  </header>
+
+  <main>
+    <section class="map-card" aria-labelledby="focus-title">
+      <div class="map-heading">
+        <div>
+          <p class="eyebrow">Локальный центр · 0 · 0 · 0</p>
+          <h1 id="focus-title">Загрузка…</h1>
+          <p id="focus-stats" class="stats"></p>
+        </div>
+        <div class="map-actions">
+          <button id="back" type="button" disabled>Назад</button>
+          <button id="home" type="button">Главная</button>
+          <button id="reset-view" type="button">Сбросить обзор</button>
+        </div>
+      </div>
+
+      <div id="map-stage" class="map-stage">
+        <canvas id="map" width="1200" height="700" aria-label="Трёхмерная карта связанных концептов"></canvas>
+        <div id="labels" class="labels"></div>
+      </div>
+      <p class="map-help">Тяните карту для вращения, используйте колесо для масштаба. Показаны только непосредственно связанные статьи. Нажать можно и на сферу, и на её заголовок.</p>
+    </section>
+
+    <article id="article" class="article-card" aria-live="polite"></article>
+  </main>
+
+  <footer>
+    <span id="version"></span>
+    <nav id="provenance" aria-label="Исходный код и лицензии"></nav>
+  </footer>
+
+  <script src="app.js" defer></script>
+</body>
+</html>
