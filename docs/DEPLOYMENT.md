@@ -1,6 +1,6 @@
 # Первый публичный запуск
 
-Ниже — минимальная установка на Debian/Ubuntu с Caddy, systemd и SQLite. Она
+Ниже — минимальная установка на Debian/Ubuntu с Nginx, systemd и SQLite. Она
 рассчитана на `cringewiki.wratixor.ru` и Python 3.11+.
 
 ## До начала
@@ -15,7 +15,7 @@
 
 ```bash
 sudo apt update
-sudo apt install -y git python3
+sudo apt install -y git python3 nginx certbot python3-certbot-nginx
 sudo useradd --system --home /var/lib/cringewiki --create-home --shell /usr/sbin/nologin cringewiki
 sudo git clone https://github.com/wratixor/cringewiki.git /opt/cringewiki
 sudo chown -R root:root /opt/cringewiki
@@ -60,27 +60,45 @@ curl http://127.0.0.1:8766/api/index
 sudo journalctl -u cringewiki -f
 ```
 
-## HTTPS через Caddy
+## HTTPS через Nginx
 
-Установите Caddy из официального репозитория, затем замените
-`/etc/caddy/Caddyfile`:
+Создайте отключённый до проверки DNS сайт
+`/etc/nginx/sites-available/cringewiki`:
 
-```caddyfile
-cringewiki.wratixor.ru {
-    reverse_proxy 127.0.0.1:8766
+```nginx
+server {
+    listen 80;
+    listen [::]:80;
+    server_name cringewiki.wratixor.ru;
+
+    client_max_body_size 256k;
+
+    location / {
+        proxy_pass http://127.0.0.1:8766;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_connect_timeout 5s;
+        proxy_read_timeout 30s;
+        proxy_send_timeout 30s;
+    }
 }
 ```
 
-Проверьте конфигурацию и перезагрузите Caddy:
+Включите его лишь после проверки DNS и firewall, затем выпустите сертификат:
 
 ```bash
-sudo caddy validate --config /etc/caddy/Caddyfile
-sudo systemctl reload caddy
+sudo ln -s /etc/nginx/sites-available/cringewiki /etc/nginx/sites-enabled/cringewiki
+sudo nginx -t && sudo systemctl reload nginx
+sudo certbot --nginx -d cringewiki.wratixor.ru
+sudo nginx -t && sudo systemctl reload nginx
 curl -I https://cringewiki.wratixor.ru/web/
 ```
 
-Caddy сам получает и продлевает сертификат, если домен указывает на этот
-сервер, а извне доступны порты 80 и 443.
+`certbot` добавит HTTPS-конфигурацию и редирект с HTTP. Проверьте автопродление
+сертификата: `sudo systemctl status certbot.timer`.
 
 ## После запуска
 
