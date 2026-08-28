@@ -155,12 +155,11 @@ canvas.dragging { cursor: grabbing; }
 .article-card { margin-top: 1rem; padding: clamp(1.2rem, 4vw, 3rem); line-height: 1.7; }
 .article-meta { margin: 0 0 1rem; color: #93a4bc; font-size: .84rem; }
 .coordinate-value {
-  padding: .1rem .34rem;
-  border: 1px solid color-mix(in srgb, var(--pole-color) 65%, transparent);
-  border-radius: 999px;
+  padding: 0 .08rem;
   color: color-mix(in srgb, var(--pole-color) 82%, white);
-  background: color-mix(in srgb, var(--pole-color) 16%, transparent);
-  box-shadow: 0 0 .65rem color-mix(in srgb, var(--pole-color) 16%, transparent);
+  text-shadow:
+    0 0 .35rem color-mix(in srgb, var(--pole-color) 70%, transparent),
+    0 0 .8rem color-mix(in srgb, var(--pole-color) 36%, transparent);
   cursor: help;
   font-weight: 700;
 }
