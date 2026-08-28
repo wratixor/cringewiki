@@ -27,6 +27,8 @@ and are not a final semantic or color-science decision.
 Hexrelatum currently has no accounts, server database, subscriptions, votes,
 hidden lore, or runtime Git authentication.
 
+Public reader: <https://wratixor.github.io/hexrelatum/>
+
 ## Local use
 
 Requires Python 3.11 or newer. Node.js is useful only for the optional JavaScript
