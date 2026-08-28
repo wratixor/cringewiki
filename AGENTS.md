@@ -9,7 +9,7 @@ while retaining Hexrelatum's relative six-coordinate navigation.
 - Keep code and bundled seed content public and safe to redistribute. Never
   commit credentials, password hashes, live user records, private company
   knowledge or production database snapshots.
-- Treat the six positive article coordinates as source data. Three-dimensional
+- Treat the six positive base coordinates from 1 through 10 as source data. Three-dimensional
   positions and colors are derived views, never replacements for the six stored
   values.
 - Keep projection and color algorithms versioned and explainable. Current

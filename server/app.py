@@ -105,8 +105,8 @@ class Handler(SimpleHTTPRequestHandler):
     @staticmethod
     def _coordinates(data):
         values = data.get("coordinates")
-        if not isinstance(values, list) or len(values) != 6 or any(type(value) is not int or not 1 <= value <= 99 for value in values):
-            raise ApiError(400, "Нужны шесть целых координат от 1 до 99")
+        if not isinstance(values, list) or len(values) != 6 or any(type(value) is not int or not 1 <= value <= 10 for value in values):
+            raise ApiError(400, "Нужны шесть целых координат от 1 до 10")
         return values
 
     def do_GET(self):

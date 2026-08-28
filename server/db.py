@@ -18,12 +18,12 @@ CREATE TABLE IF NOT EXISTS points (
   slug TEXT NOT NULL UNIQUE,
   kind TEXT NOT NULL CHECK (kind IN ('user', 'article')),
   title TEXT NOT NULL CHECK (length(title) BETWEEN 1 AND 128),
-  c0 INTEGER NOT NULL CHECK (c0 BETWEEN 1 AND 99),
-  c1 INTEGER NOT NULL CHECK (c1 BETWEEN 1 AND 99),
-  c2 INTEGER NOT NULL CHECK (c2 BETWEEN 1 AND 99),
-  c3 INTEGER NOT NULL CHECK (c3 BETWEEN 1 AND 99),
-  c4 INTEGER NOT NULL CHECK (c4 BETWEEN 1 AND 99),
-  c5 INTEGER NOT NULL CHECK (c5 BETWEEN 1 AND 99),
+  c0 INTEGER NOT NULL CHECK (c0 BETWEEN 1 AND 10),
+  c1 INTEGER NOT NULL CHECK (c1 BETWEEN 1 AND 10),
+  c2 INTEGER NOT NULL CHECK (c2 BETWEEN 1 AND 10),
+  c3 INTEGER NOT NULL CHECK (c3 BETWEEN 1 AND 10),
+  c4 INTEGER NOT NULL CHECK (c4 BETWEEN 1 AND 10),
+  c5 INTEGER NOT NULL CHECK (c5 BETWEEN 1 AND 10),
   created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 CREATE TABLE IF NOT EXISTS profiles (
@@ -66,6 +66,21 @@ CREATE INDEX IF NOT EXISTS point_links_target ON point_links(target_point_id);
 CREATE INDEX IF NOT EXISTS supports_target ON supports(target_point_id);
 """
 
+COORDINATE_GUARDS = """
+CREATE TRIGGER IF NOT EXISTS points_coordinates_insert
+BEFORE INSERT ON points
+WHEN NEW.c0 NOT BETWEEN 1 AND 10 OR NEW.c1 NOT BETWEEN 1 AND 10
+  OR NEW.c2 NOT BETWEEN 1 AND 10 OR NEW.c3 NOT BETWEEN 1 AND 10
+  OR NEW.c4 NOT BETWEEN 1 AND 10 OR NEW.c5 NOT BETWEEN 1 AND 10
+BEGIN SELECT RAISE(ABORT, 'base coordinates must be between 1 and 10'); END;
+CREATE TRIGGER IF NOT EXISTS points_coordinates_update
+BEFORE UPDATE OF c0, c1, c2, c3, c4, c5 ON points
+WHEN NEW.c0 NOT BETWEEN 1 AND 10 OR NEW.c1 NOT BETWEEN 1 AND 10
+  OR NEW.c2 NOT BETWEEN 1 AND 10 OR NEW.c3 NOT BETWEEN 1 AND 10
+  OR NEW.c4 NOT BETWEEN 1 AND 10 OR NEW.c5 NOT BETWEEN 1 AND 10
+BEGIN SELECT RAISE(ABORT, 'base coordinates must be between 1 and 10'); END;
+"""
+
 
 class ClosingConnection(sqlite3.Connection):
     """A transaction context which also releases the file handle on exit."""
@@ -90,3 +105,12 @@ def connect(path: Path) -> sqlite3.Connection:
 def initialize(path: Path) -> None:
     with connect(path) as connection:
         connection.executescript(SCHEMA)
+        version = connection.execute("PRAGMA user_version").fetchone()[0]
+        if version < 1:
+            columns = ", ".join(
+                f"c{index} = MAX(1, MIN(10, ROUND(1 + (c{index} - 1) * 9.0 / 98)))"
+                for index in range(6)
+            )
+            connection.execute(f"UPDATE points SET {columns}")
+            connection.execute("PRAGMA user_version = 1")
+        connection.executescript(COORDINATE_GUARDS)

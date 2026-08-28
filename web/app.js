@@ -26,6 +26,7 @@ const provenance = document.querySelector("#provenance");
 const pointActions = document.querySelector("#point-actions");
 const accountLink = document.querySelector("#account-link");
 const createLink = document.querySelector("#create-link");
+const registerLink = document.querySelector("#register-link");
 const logoutButton = document.querySelector("#logout");
 
 async function api(path, options = {}) {
@@ -168,6 +169,16 @@ function drawSphere(node) {
   context.arc(node.screen.x, node.screen.y, radius, 0, Math.PI * 2);
   context.fill();
   context.stroke();
+  const weight = node.concept.weight < 10 ? node.concept.weight.toFixed(1) : String(Math.round(node.concept.weight));
+  context.save();
+  context.fillStyle = "#ffffff";
+  context.font = `700 ${clamp(radius * .62, 8, 13)}px ui-sans-serif, system-ui, sans-serif`;
+  context.textAlign = "center";
+  context.textBaseline = "middle";
+  context.shadowColor = "rgba(0, 0, 0, .9)";
+  context.shadowBlur = 3;
+  context.fillText(weight, node.screen.x, node.screen.y);
+  context.restore();
 }
 
 function drawMap() {
@@ -245,7 +256,7 @@ function renderLabels(nodes, axisLabels, width, height) {
     button.className = "node-label";
     button.append(document.createTextNode(node.concept.title));
     const rating = document.createElement("small");
-    rating.textContent = `вес ${node.concept.weight.toFixed(2)}`;
+    rating.textContent = `ссылок ${node.concept.incomingCount}`;
     button.append(rating);
     button.addEventListener("click", () => navigate(node.concept.id));
     button.style.visibility = "hidden";
@@ -352,7 +363,21 @@ function renderMarkdown(markdown) {
 function renderFocus() {
   const focus = conceptById(state.focusId);
   focusTitle.textContent = focus.title;
-  focusStats.textContent = `${focus.kind === "user" ? "пользователь" : "пост"} · вес ${focus.weight.toFixed(4)} · входящих связей ${focus.incomingCount} · связей ${focus.linkedIds.length} · координаты ${focus.coordinates.join(" · ")}`;
+  const poleColors = ["#ee484a", "#00d2dc", "#3ece70", "#d646d6", "#4170ee", "#f0cd2c"];
+  const poleNames = state.index.axes.flatMap((axis) => [axis.positive, axis.negative]);
+  focusStats.replaceChildren(document.createTextNode(
+    `${focus.kind === "user" ? "пользователь" : "пост"} · вес ${focus.weight.toFixed(4)} · входящих связей ${focus.incomingCount} · связей ${focus.linkedIds.length} · координаты `,
+  ));
+  focus.coordinates.forEach((coordinate, index) => {
+    if (index) focusStats.append(document.createTextNode(" · "));
+    const value = document.createElement("span");
+    value.className = "coordinate-value";
+    value.textContent = coordinate;
+    value.title = `Полюс: ${poleNames[index]}`;
+    value.setAttribute("aria-label", `${poleNames[index]}: ${coordinate}`);
+    value.style.setProperty("--pole-color", poleColors[index]);
+    focusStats.append(value);
+  });
   renderPointActions(focus);
   articleBody.innerHTML = renderMarkdown(focus.body);
   articleBody.querySelectorAll("[data-concept-id]").forEach((link) => {
@@ -384,6 +409,7 @@ function renderAccount() {
   accountLink.textContent = user ? user.username : "Войти";
   accountLink.href = user ? `#user-${user.id}` : "login.html";
   createLink.hidden = !user;
+  registerLink.hidden = Boolean(user);
   logoutButton.hidden = !user;
 }
 
