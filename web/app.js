@@ -379,6 +379,7 @@ function renderMarkdown(markdown) {
 
 function renderFocus() {
   const focus = conceptById(state.focusId);
+  if (state.session?.user) createLink.href = `editor.html?parent=${encodeURIComponent(focus.id)}`;
   focusTitle.textContent = focus.title;
   const poleColors = ["#ee484a", "#00d2dc", "#3ece70", "#d646d6", "#4170ee", "#f0cd2c"];
   const poleNames = state.index.axes.flatMap((axis) => [axis.positive, axis.negative]);
