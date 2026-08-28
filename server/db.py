@@ -19,6 +19,7 @@ CREATE TABLE IF NOT EXISTS points (
   kind TEXT NOT NULL CHECK (kind IN ('user', 'article')),
   title TEXT NOT NULL CHECK (length(title) BETWEEN 1 AND 128),
   action_url TEXT,
+  source_path TEXT,
   system_body TEXT NOT NULL DEFAULT '' CHECK (length(system_body) <= 100000),
   c0 INTEGER NOT NULL CHECK (c0 BETWEEN 1 AND 10),
   c1 INTEGER NOT NULL CHECK (c1 BETWEEN 1 AND 10),
@@ -111,8 +112,11 @@ def initialize(path: Path) -> None:
         point_columns = {row[1] for row in connection.execute("PRAGMA table_info(points)")}
         if "action_url" not in point_columns:
             connection.execute("ALTER TABLE points ADD COLUMN action_url TEXT")
+        if "source_path" not in point_columns:
+            connection.execute("ALTER TABLE points ADD COLUMN source_path TEXT")
         if "system_body" not in point_columns:
             connection.execute("ALTER TABLE points ADD COLUMN system_body TEXT NOT NULL DEFAULT ''")
+        connection.execute("CREATE UNIQUE INDEX IF NOT EXISTS points_source_path ON points(source_path) WHERE source_path IS NOT NULL")
         article_columns = {row[1] for row in connection.execute("PRAGMA table_info(articles)")}
         if "parent_point_id" not in article_columns:
             connection.execute("ALTER TABLE articles ADD COLUMN parent_point_id INTEGER REFERENCES points(id)")

@@ -14,6 +14,7 @@ from pathlib import Path
 from urllib.parse import unquote, urlparse
 
 from .db import connect, ensure_tags_concept, ensure_users_concept, initialize
+from .git_wiki import sync_repository_wiki
 from .index import build_index
 from .security import hash_password, new_token, token_digest, verify_password
 
@@ -274,10 +275,12 @@ class Handler(SimpleHTTPRequestHandler):
 
 def main():
     initialize(DB_PATH)
+    with connect(DB_PATH) as connection:
+        imported = sync_repository_wiki(connection, ROOT)
     host = os.environ.get("CRINGEWIKI_HOST", "127.0.0.1")
     port = int(os.environ.get("CRINGEWIKI_PORT", "8765"))
     server = ThreadingHTTPServer((host, port), Handler)
-    print(f"Cringewiki: http://{host}:{port}/web/")
+    print(f"Cringewiki: http://{host}:{port}/web/ (Git-статей: {imported})")
     try:
         server.serve_forever()
     except KeyboardInterrupt:

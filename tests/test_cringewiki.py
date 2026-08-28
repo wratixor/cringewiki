@@ -9,6 +9,7 @@ from server.app import ApiError, Handler
 from server.db import SCHEMA, connect, initialize
 from server.index import build_index
 from server.influence import calculate_influence
+from server.git_wiki import GitWikiError, sync_repository_wiki
 from server.security import hash_password, verify_password
 from server.seed import seed
 
@@ -110,6 +111,47 @@ class PersistenceTests(unittest.TestCase):
                 tag_links = {tuple(row) for row in connection.execute("SELECT target_point_id,kind FROM point_links WHERE source_point_id = ?", (tag_point,))}
             self.assertEqual(links, {(author_point, "author"), (users_point, "content"), (tag_point, "content")})
             self.assertIn((tags_parent, "content"), tag_links)
+
+    def test_git_wiki_import_updates_only_git_owned_articles(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            wiki = root / "wiki"; wiki.mkdir()
+            (wiki / "index.md").write_text(
+                "---\nid: home\ntitle: Из Git\ncoordinates: [5, 5, 5, 5, 5, 5]\nhome: true\n---\n[Справка](guide.md)\n",
+                encoding="utf-8",
+            )
+            (wiki / "guide.md").write_text(
+                "---\nid: guide\ntitle: Справка\ncoordinates: [1, 2, 3, 4, 5, 6]\n---\nТекст.\n",
+                encoding="utf-8",
+            )
+            path = root / "test.sqlite3"; initialize(path)
+            with connect(path) as connection:
+                user_point = connection.execute(
+                    "INSERT INTO points(slug,kind,title,c0,c1,c2,c3,c4,c5) VALUES ('post-local','article','Локальный',1,1,1,1,1,1)"
+                ).lastrowid
+                self.assertEqual(sync_repository_wiki(connection, root), 2)
+                home = connection.execute("SELECT title,system_body,source_path FROM points WHERE slug='home'").fetchone()
+                guide = connection.execute("SELECT source_path FROM points WHERE slug='guide'").fetchone()
+                links = connection.execute(
+                    "SELECT target_point_id FROM point_links WHERE source_point_id=(SELECT id FROM points WHERE slug='home')"
+                ).fetchall()
+                self.assertEqual(home["title"], "Из Git")
+                self.assertIn("[[guide|Справка]]", home["system_body"])
+                self.assertEqual(home["source_path"], "wiki/index.md")
+                self.assertEqual(guide["source_path"], "wiki/guide.md")
+                self.assertEqual([row[0] for row in links], [connection.execute("SELECT id FROM points WHERE slug='guide'").fetchone()[0]])
+                self.assertEqual(connection.execute("SELECT title FROM points WHERE id=?", (user_point,)).fetchone()[0], "Локальный")
+
+    def test_git_wiki_rejects_collision_with_user_article(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary); wiki = root / "wiki"; wiki.mkdir()
+            (wiki / "index.md").write_text("---\nid: home\ntitle: Главная\ncoordinates: [1, 1, 1, 1, 1, 1]\n---\n", encoding="utf-8")
+            (wiki / "taken.md").write_text("---\nid: taken\ntitle: Занято\ncoordinates: [1, 1, 1, 1, 1, 1]\n---\n", encoding="utf-8")
+            path = root / "test.sqlite3"; initialize(path)
+            with connect(path) as connection:
+                connection.execute("INSERT INTO points(slug,kind,title,c0,c1,c2,c3,c4,c5) VALUES ('taken','article','Локальная',1,1,1,1,1,1)")
+                with self.assertRaises(GitWikiError):
+                    sync_repository_wiki(connection, root)
 
 
 if __name__ == "__main__":
